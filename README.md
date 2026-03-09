@@ -1,6 +1,6 @@
 Bevy Flappy Bird
 
-download 'Flappy Bird' .apk and extract its 'assets' folder to /src/assets
+download 'Flappy Bird' .apk and extract its 'assets' folder to '/src/assets'
 
 File used is as follows:
 | | |
