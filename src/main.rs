@@ -11,10 +11,19 @@ fn main() {
             }),
             ..default()
         }))
-        .add_systems(Update, hello_world)
+        .add_systems(Startup, setup)
+        // .add_systems(Update, hello_world)
         .run();
 }
 
-fn hello_world() {
-    println!("hello world!");
+// fn hello_world() {
+//     println!("hello world!");
+// }
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Camera2d);
+    commands.spawn((
+        Sprite::from_image(asset_server.load("gfx/atlas.png")),
+        Transform::from_xyz(370.0, -255.0, 0.0), //not sure why these values work, need to change to texture atlast
+    ));
 }
