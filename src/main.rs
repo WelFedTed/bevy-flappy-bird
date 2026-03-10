@@ -16,10 +16,6 @@ fn main() {
         .run();
 }
 
-// fn hello_world() {
-//     println!("hello world!");
-// }
-
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
     commands.spawn((
