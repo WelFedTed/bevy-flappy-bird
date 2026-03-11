@@ -3,14 +3,18 @@ use bevy::window::{WindowPlugin, WindowResolution};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "bevy-flappy-bird".into(),
-                resolution: WindowResolution::new(288, 512),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "bevy-flappy-bird".into(),
+                        resolution: WindowResolution::new(288, 512),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(ImagePlugin::default_nearest()),
+        )
         .add_systems(Startup, setup)
         // .add_systems(Update, hello_world)
         .run();
