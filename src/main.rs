@@ -22,8 +22,14 @@ fn main() {
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
+    // background
     commands.spawn((
         Sprite::from_image(asset_server.load("gfx/atlas.png")),
-        Transform::from_xyz(370.0, -255.0, 0.0), //not sure why these values work, need to change to texture atlast
+        Transform::from_xyz(370.0, -255.0, 0.0), // not sure why these values work, need to change to texture atlast
+    ));
+    // bird
+    commands.spawn((
+        Sprite::from_image(asset_server.load("bird.png")),
+        Transform::from_xyz(0.0, 0.0, 1.0),
     ));
 }
