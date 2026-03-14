@@ -2,6 +2,10 @@ use bevy::prelude::*;
 use bevy::window::{WindowPlugin, WindowResolution};
 use std::collections::HashMap;
 
+const GRAVITY: f32 = -1000.0;
+const JUMP_STRENGTH: f32 = 350.0;
+const MAX_FALL_SPEED: f32 = -400.0;
+
 fn main() {
     App::new()
         .add_plugins(
@@ -160,15 +164,12 @@ fn player_movement(time: Res<Time>, mut query: Query<(&Velocity, &mut Transform)
     }
 }
 
-const GRAVITY: f32 = -900.0;
-
 fn apply_gravity(time: Res<Time>, mut query: Query<&mut Velocity, With<Player>>) {
     for mut velocity in &mut query {
         velocity.y += GRAVITY * time.delta_secs();
+        velocity.y = velocity.y.max(MAX_FALL_SPEED);
     }
 }
-
-const JUMP_STRENGTH: f32 = 350.0;
 
 fn player_jump(keyboard: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
     if keyboard.just_pressed(KeyCode::Space) {
@@ -178,9 +179,7 @@ fn player_jump(keyboard: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Veloci
     }
 }
 
-fn player_rotation(
-    query: Query<(&Velocity, &mut Transform), With<Player>>,
-) {
+fn player_rotation(query: Query<(&Velocity, &mut Transform), With<Player>>) {
     for (velocity, mut transform) in query {
         let angle = (velocity.y / 600.0).clamp(-1.0, 1.0);
         transform.rotation = Quat::from_rotation_z(angle * 0.5);
