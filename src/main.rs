@@ -182,6 +182,6 @@ fn player_jump(keyboard: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Veloci
 fn player_rotation(query: Query<(&Velocity, &mut Transform), With<Player>>) {
     for (velocity, mut transform) in query {
         let angle = (velocity.y / 600.0).clamp(-1.0, 1.0);
-        transform.rotation = Quat::from_rotation_z(angle * 0.5);
+        transform.rotation = Quat::from_rotation_z(angle * 1.5);
     }
 }
