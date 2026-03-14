@@ -18,8 +18,12 @@ fn main() {
         )
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))
-        .add_systems(Startup, spawn_bird.after(load_atlas))
+        .add_systems(Startup, spawn_player.after(load_atlas))
         .add_systems(Update, animate_sprite)
+        .add_systems(Update, apply_gravity)
+        .add_systems(Update, player_movement)
+        .add_systems(Update, player_jump)
+        .add_systems(Update, player_rotation)
         .run();
 }
 
@@ -101,7 +105,7 @@ struct Animation {
     current: usize,
 }
 
-fn spawn_bird(mut commands: Commands, atlas: Res<Atlas>) {
+fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
     let frames = vec![
         atlas.map["bird0_0"],
         atlas.map["bird0_1"],
@@ -123,6 +127,8 @@ fn spawn_bird(mut commands: Commands, atlas: Res<Atlas>) {
             timer: Timer::from_seconds(0.1, TimerMode::Repeating),
             current: 0,
         },
+        Player,
+        Velocity { y: 0.0 },
     ));
 }
 
@@ -137,5 +143,46 @@ fn animate_sprite(time: Res<Time>, mut query: Query<(&mut Animation, &mut Sprite
                 atlas.index = animation.frames[animation.current];
             }
         }
+    }
+}
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Velocity {
+    y: f32,
+}
+
+fn player_movement(time: Res<Time>, mut query: Query<(&Velocity, &mut Transform), With<Player>>) {
+    for (velocity, mut transform) in &mut query {
+        transform.translation.y += velocity.y * time.delta_secs();
+    }
+}
+
+const GRAVITY: f32 = -900.0;
+
+fn apply_gravity(time: Res<Time>, mut query: Query<&mut Velocity, With<Player>>) {
+    for mut velocity in &mut query {
+        velocity.y += GRAVITY * time.delta_secs();
+    }
+}
+
+const JUMP_STRENGTH: f32 = 350.0;
+
+fn player_jump(keyboard: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
+    if keyboard.just_pressed(KeyCode::Space) {
+        for mut velocity in &mut query {
+            velocity.y = JUMP_STRENGTH;
+        }
+    }
+}
+
+fn player_rotation(
+    query: Query<(&Velocity, &mut Transform), With<Player>>,
+) {
+    for (velocity, mut transform) in query {
+        let angle = (velocity.y / 600.0).clamp(-1.0, 1.0);
+        transform.rotation = Quat::from_rotation_z(angle * 0.5);
     }
 }
