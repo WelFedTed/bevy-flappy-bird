@@ -125,7 +125,7 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
                 index: frames[0],
             },
         ),
-        Transform::from_xyz(0.0, 0.0, 1.0),
+        Transform::from_xyz(-50.0, 0.0, 1.0),
         Animation {
             frames,
             timer: Timer::from_seconds(0.1, TimerMode::Repeating),
