@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::window::{WindowPlugin, WindowResolution};
+use std::collections::HashMap;
 
 fn main() {
     App::new()
@@ -15,21 +16,126 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
-        .add_systems(Startup, setup)
-        // .add_systems(Update, hello_world)
+        .add_systems(Startup, load_atlas)
+        .add_systems(Startup, setup.after(load_atlas))
+        .add_systems(Startup, spawn_bird.after(load_atlas))
+        .add_systems(Update, animate_sprite)
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+#[derive(Resource)]
+struct Atlas {
+    texture: Handle<Image>,
+    layout: Handle<TextureAtlasLayout>,
+    map: HashMap<String, usize>,
+}
+
+fn load_atlas(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    let texture = asset_server.load("atlas.png");
+    let txt = std::fs::read_to_string("assets/atlas.txt").unwrap();
+    let texture_width = 1024; // width of flappy bird's atlas.png
+    let texture_height = 1024; // height of flappy bird's atlas.png
+
+    let mut layout = TextureAtlasLayout::new_empty(UVec2::new(texture_width, texture_height));
+    let mut map = HashMap::new();
+
+    for (i, line) in txt.lines().enumerate() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+
+        let name = parts[0];
+        // let width: f32 = parts[1].parse().unwrap();
+        // let height: f32 = parts[2].parse().unwrap();
+        let u: f32 = parts[3].parse().unwrap();
+        let v: f32 = parts[4].parse().unwrap();
+        let uw: f32 = parts[5].parse().unwrap();
+        let vh: f32 = parts[6].parse().unwrap();
+
+        let x = (u * texture_width as f32) as u32;
+        let y = (v * texture_height as f32) as u32;
+        let w = (uw * texture_width as f32) as u32;
+        let h = (vh * texture_height as f32) as u32;
+
+        layout.add_texture(URect::new(x, y, x + w, y + h));
+
+        map.insert(name.to_string(), i);
+    }
+
+    let layout_handle = layouts.add(layout);
+
+    commands.insert_resource(Atlas {
+        texture,
+        layout: layout_handle,
+        map,
+    });
+}
+
+fn spawn_sprite(commands: &mut Commands, atlas: &Atlas, name: &str, pos: Vec3) {
+    let index = atlas.map[name];
+
+    commands.spawn((
+        Sprite::from_atlas_image(
+            atlas.texture.clone(),
+            TextureAtlas {
+                layout: atlas.layout.clone(),
+                index,
+            },
+        ),
+        Transform::from_translation(pos),
+    ));
+}
+
+fn setup(mut commands: Commands, atlas: Res<Atlas>) {
     commands.spawn(Camera2d);
-    // background
+
+    spawn_sprite(&mut commands, &atlas, "bg_day", Vec3::new(0.0, 0.0, 0.0));
+}
+
+#[derive(Component)]
+struct Animation {
+    frames: Vec<usize>,
+    timer: Timer,
+    current: usize,
+}
+
+fn spawn_bird(mut commands: Commands, atlas: Res<Atlas>) {
+    let frames = vec![
+        atlas.map["bird0_0"],
+        atlas.map["bird0_1"],
+        atlas.map["bird0_2"],
+        atlas.map["bird0_1"],
+    ];
+
     commands.spawn((
-        Sprite::from_image(asset_server.load("gfx/atlas.png")),
-        Transform::from_xyz(370.0, -255.0, 0.0), // not sure why these values work, need to change to texture atlast
-    ));
-    // bird
-    commands.spawn((
-        Sprite::from_image(asset_server.load("bird.png")),
+        Sprite::from_atlas_image(
+            atlas.texture.clone(),
+            TextureAtlas {
+                layout: atlas.layout.clone(),
+                index: frames[0],
+            },
+        ),
         Transform::from_xyz(0.0, 0.0, 1.0),
+        Animation {
+            frames,
+            timer: Timer::from_seconds(0.1, TimerMode::Repeating),
+            current: 0,
+        },
     ));
+}
+
+fn animate_sprite(time: Res<Time>, mut query: Query<(&mut Animation, &mut Sprite)>) {
+    for (mut animation, mut sprite) in &mut query {
+        animation.timer.tick(time.delta());
+
+        if animation.timer.just_finished() {
+            animation.current = (animation.current + 1) % animation.frames.len();
+
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = animation.frames[animation.current];
+            }
+        }
+    }
 }
