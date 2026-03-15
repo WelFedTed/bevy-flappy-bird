@@ -1,6 +1,9 @@
 # Bevy Flappy Bird
 
+A reimplementation of Flappy Bird using the Bevy game framework.
+
 ## USAGE
+
 Download the Flappy Bird .APK and save it to `./com.dotgears.flappybird-1.3-4-minAPI8.apk`.<br>
 Run `./extract_assets.sh` to extract the required assets from the .APK to the `./assets` directory.
 
