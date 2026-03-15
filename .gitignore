@@ -1,6 +1,4 @@
-/target
-/src/assets
 /assets
+/target
 .DS_Store
-/temp
 com.dotgears.flappybird-1.3-4-minAPI8.apk
