@@ -1,8 +1,10 @@
-Bevy Flappy Bird
+# Bevy Flappy Bird
 
-download 'Flappy Bird' .apk and extract its 'assets' folder to project directory (i.e 'bevy-flappy-bird/assets')
+## USAGE
+Download the Flappy Bird .APK and save it to `./com.dotgears.flappybird-1.3-4-minAPI8.apk`.<br>
+Run `./extract_assets.sh` to extract the required assets from the .APK to the `./assets` directory.
 
-File used is as follows:
+Expected .APK file info is as follows:
 | | |
 | :-- | :-- |
 | NAME | com.dotgears.flappybird-1.3-4-minAPI8.apk |
