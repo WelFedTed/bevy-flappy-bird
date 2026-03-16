@@ -5,13 +5,14 @@ EXPECTED_MD5="BF978C69C8E594E6FE301B677E69ACBC"
 DEST_DIR="./assets"
 
 FILES=(
-"res/raw/atlas.txt"
 "assets/gfx/atlas.png"
 "assets/sounds/sfx_die.ogg"
 "assets/sounds/sfx_hit.ogg"
 "assets/sounds/sfx_point.ogg"
 "assets/sounds/sfx_swooshing.ogg"
 "assets/sounds/sfx_wing.ogg"
+"res/drawable/splash.png"
+"res/raw/atlas.txt"
 )
 
 OVERWRITE_ALL=false
