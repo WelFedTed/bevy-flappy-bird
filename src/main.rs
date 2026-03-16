@@ -5,6 +5,11 @@ use std::collections::HashMap;
 const GRAVITY: f32 = -1000.0;
 const JUMP_STRENGTH: f32 = 350.0;
 const MAX_FALL_SPEED: f32 = -400.0;
+const SCROLL_SPEED: f32 = 100.0;
+const SPAWN_LOCATION: f32 = 336.0;
+const DESPAWN_LOCATION: f32 = -336.0;
+const PIPE_GAP: f32 = 200.0; // distance between pipes for bird to pass through
+const PIPE_SPAWN_INTERVAL: f32 = 2.0;
 
 fn main() {
     App::new()
@@ -23,11 +28,15 @@ fn main() {
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))
         .add_systems(Startup, spawn_player.after(load_atlas))
+        .add_systems(Startup, spawn_ground.after(load_atlas))
+        .add_systems(Startup, spawn_pipes.after(load_atlas))
         .add_systems(Update, animate_sprite)
         .add_systems(Update, apply_gravity)
         .add_systems(Update, player_movement)
         .add_systems(Update, player_jump)
         .add_systems(Update, player_rotation)
+        .add_systems(Update, move_obstacles)
+        .add_systems(Update, despawn_offscreen_entities)
         .run();
 }
 
@@ -100,7 +109,6 @@ fn setup(mut commands: Commands, atlas: Res<Atlas>) {
     commands.spawn(Camera2d);
 
     spawn_sprite(&mut commands, &atlas, "bg_day", Vec3::new(0.0, 0.0, 0.0));
-    spawn_sprite(&mut commands, &atlas, "land", Vec3::new(0.0, -200.0, 0.0));
 }
 
 #[derive(Component)]
@@ -126,7 +134,7 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
                 index: frames[0],
             },
         ),
-        Transform::from_xyz(-50.0, 0.0, 1.0),
+        Transform::from_xyz(-50.0, 0.0, 3.0),
         Animation {
             frames,
             timer: Timer::from_seconds(0.1, TimerMode::Repeating),
@@ -185,4 +193,56 @@ fn player_rotation(query: Query<(&Velocity, &mut Transform), With<Player>>) {
         let angle = (velocity.y / 600.0).clamp(-1.0, 1.0);
         transform.rotation = Quat::from_rotation_z(angle * 1.5);
     }
+}
+
+#[derive(Component)]
+struct Ground;
+
+fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
+    commands.spawn((
+        Sprite::from_atlas_image(
+            atlas.texture.clone(),
+            TextureAtlas {
+                layout: atlas.layout.clone(),
+                index: atlas.map["land"],
+            },
+        ),
+        Transform::from_xyz(0.0, -200.0, 2.0),
+        Ground,
+    ));
+}
+
+fn move_obstacles(
+    time: Res<Time>,
+    mut query: Query<&mut Transform, Or<(With<Ground>, With<Pipe>)>>,
+) {
+    for mut transform in &mut query {
+        transform.translation.x -= SCROLL_SPEED * time.delta_secs();
+    }
+}
+
+fn despawn_offscreen_entities(mut commands: Commands, query: Query<(Entity, &Transform)>) {
+    for (entity, transform) in &query {
+        if transform.translation.x < DESPAWN_LOCATION {
+            commands.entity(entity).despawn();
+            // println!("REMOVED ENTITY");
+        }
+    }
+}
+
+#[derive(Component)]
+struct Pipe;
+
+fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
+    commands.spawn((
+        Sprite::from_atlas_image(
+            atlas.texture.clone(),
+            TextureAtlas {
+                layout: atlas.layout.clone(),
+                index: atlas.map["pipe_up"],
+            },
+        ),
+        Transform::from_xyz(SPAWN_LOCATION, 0.0, 1.0),
+        Pipe,
+    ));
 }
