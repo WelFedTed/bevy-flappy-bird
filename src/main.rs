@@ -37,6 +37,7 @@ fn main() {
         .add_systems(Update, player_rotation)
         .add_systems(Update, move_obstacles)
         .add_systems(Update, despawn_offscreen_entities)
+        .add_systems(Update, spawn_next_ground)
         .run();
 }
 
@@ -218,6 +219,29 @@ fn move_obstacles(
 ) {
     for mut transform in &mut query {
         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
+    }
+}
+
+fn spawn_next_ground(
+    mut commands: Commands,
+    atlas: Res<Atlas>,
+    query: Query<&Transform, With<Ground>>,
+) {
+    for transform in &query {
+        if transform.translation.x == 0.0 {
+            println!("SPAWN NEXT GROUND");
+            commands.spawn((
+                Sprite::from_atlas_image(
+                    atlas.texture.clone(),
+                    TextureAtlas {
+                        layout: atlas.layout.clone(),
+                        index: atlas.map["land"],
+                    },
+                ),
+                Transform::from_xyz(SPAWN_LOCATION, -200.0, 2.0),
+                Ground,
+            ));
+        }
     }
 }
 
