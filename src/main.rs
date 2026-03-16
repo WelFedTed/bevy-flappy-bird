@@ -100,6 +100,7 @@ fn setup(mut commands: Commands, atlas: Res<Atlas>) {
     commands.spawn(Camera2d);
 
     spawn_sprite(&mut commands, &atlas, "bg_day", Vec3::new(0.0, 0.0, 0.0));
+    spawn_sprite(&mut commands, &atlas, "land", Vec3::new(0.0, -200.0, 0.0));
 }
 
 #[derive(Component)]
