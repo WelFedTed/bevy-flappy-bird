@@ -1,20 +1,16 @@
-use bevy::ecs::change_detection::MaybeLocation;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::window::{WindowPlugin, WindowResolution};
 use std::collections::HashMap;
-use std::thread::spawn;
 
+const SCREEN_WIDTH: f32 = 288.0;
+const SCREEN_HEIGHT: f32 = 512.0;
 const GRAVITY: f32 = -1000.0;
 const JUMP_STRENGTH: f32 = 350.0;
 const MAX_FALL_SPEED: f32 = -400.0;
 const SCROLL_SPEED: f32 = 100.0;
-const SPAWN_LOCATION: f32 = 250.0;
-const DESPAWN_LOCATION: f32 = -336.0;
-const PIPE_GAP: f32 = 200.0; // distance between pipes for bird to pass through
-const PIPE_SPAWN_INTERVAL: f32 = 2.0;
-const SCREEN_WIDTH: f32 = 288.0;
-const SCREEN_HEIGHT: f32 = 512.0;
+const PIPE_GAP: f32 = 50.0; // distance between pipes vertically for bird to pass through
+const PIPE_INTERVAL: f32 = 175.0; // distance between pipe pairs horizontally
 
 fn main() {
     App::new()
@@ -230,12 +226,11 @@ fn move_obstacles(
 ) {
     for mut transform in &mut query {
         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
-        // println!("{}", transform.translation.x);
     }
 }
 
 fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
-    println!("SPAWN NEXT GROUND");
+    println!("SPAWNED NEXT GROUND");
     commands.spawn((
         Sprite::from_atlas_image(
             atlas.texture.clone(),
@@ -256,29 +251,20 @@ fn despawn_offscreen_entities(
     query: Query<(Entity, &Transform, Option<&Ground>, Option<&Pipe>)>,
 ) {
     for (entity, transform, maybe_ground, maybe_pipe) in &query {
-        // if transform.translation.x < DESPAWN_LOCATION {
-        //     commands.entity(entity).despawn();
-        //     // println!("REMOVED ENTITY");
-        //     if let Some(_) = maybe_ground {
-        //         println!("REMOVED GROUND");
-        //         spawn_next_ground(&mut commands, &atlas);
-        //     }
-        //     if let Some(_) = maybe_pipe {
-        //         println!("REMOVED PIPE");
-        //     }
-        // }
-        // println!("REMOVED ENTITY");
         if let Some(_) = maybe_ground {
             if transform.translation.x <= (-SCREEN_WIDTH - 336.0) / 2.0 {
+                // note: ground sprite width = 336.0
                 commands.entity(entity).despawn();
                 println!("REMOVED GROUND");
                 spawn_next_ground(&mut commands, &atlas);
             }
         }
         if let Some(_) = maybe_pipe {
-            if transform.translation.x <= 0.0 {
+            if transform.translation.x <= -(SCREEN_WIDTH + 52.0) / 2.0 {
+                // note: pipe sprite width = 52.0
                 commands.entity(entity).despawn();
                 println!("REMOVED PIPE");
+                // spawn_next_pipes(&mut commands, &atlas);
             }
         }
     }
@@ -288,6 +274,39 @@ fn despawn_offscreen_entities(
 struct Pipe;
 
 fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
+    for i in 0..200 {
+        println!("Spawning Pipes {}", i + 1);
+        let pipe_offset: f32 = rand::random_range(-100.0..100.0);
+        // println!("{}", pipe_offset);
+        commands.spawn((
+            Sprite::from_atlas_image(
+                atlas.texture.clone(),
+                TextureAtlas {
+                    layout: atlas.layout.clone(),
+                    index: atlas.map["pipe_up"],
+                },
+            ),
+            Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32, PIPE_GAP + pipe_offset, 1.0),
+            Pipe,
+        ));
+        commands.spawn((
+            Sprite::from_atlas_image(
+                atlas.texture.clone(),
+                TextureAtlas {
+                    layout: atlas.layout.clone(),
+                    index: atlas.map["pipe_down"],
+                },
+            ),
+            Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32, -PIPE_GAP - pipe_offset, 1.0),
+            Pipe,
+        ));
+    }
+}
+
+fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
+    println!("SPAWNED NEXT PIPES");
+    let pipe_offset: f32 = rand::random_range(-100.0..100.0);
+    // println!("{}", pipe_offset);
     commands.spawn((
         Sprite::from_atlas_image(
             atlas.texture.clone(),
@@ -296,7 +315,18 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
                 index: atlas.map["pipe_up"],
             },
         ),
-        Transform::from_xyz(SPAWN_LOCATION, 0.0, 1.0),
+        Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, -PIPE_GAP - pipe_offset, 1.0),
+        Pipe,
+    ));
+    commands.spawn((
+        Sprite::from_atlas_image(
+            atlas.texture.clone(),
+            TextureAtlas {
+                layout: atlas.layout.clone(),
+                index: atlas.map["pipe_down"],
+            },
+        ),
+        Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, PIPE_GAP + pipe_offset, 1.0),
         Pipe,
     ));
 }
