@@ -1,15 +1,20 @@
+use bevy::ecs::change_detection::MaybeLocation;
 use bevy::prelude::*;
+use bevy::sprite::Anchor;
 use bevy::window::{WindowPlugin, WindowResolution};
 use std::collections::HashMap;
+use std::thread::spawn;
 
 const GRAVITY: f32 = -1000.0;
 const JUMP_STRENGTH: f32 = 350.0;
 const MAX_FALL_SPEED: f32 = -400.0;
 const SCROLL_SPEED: f32 = 100.0;
-const SPAWN_LOCATION: f32 = 336.0;
+const SPAWN_LOCATION: f32 = 250.0;
 const DESPAWN_LOCATION: f32 = -336.0;
 const PIPE_GAP: f32 = 200.0; // distance between pipes for bird to pass through
 const PIPE_SPAWN_INTERVAL: f32 = 2.0;
+const SCREEN_WIDTH: f32 = 288.0;
+const SCREEN_HEIGHT: f32 = 512.0;
 
 fn main() {
     App::new()
@@ -18,7 +23,10 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "bevy-flappy-bird".into(),
-                        resolution: WindowResolution::new(288, 512),
+                        resolution: WindowResolution::new(
+                            SCREEN_WIDTH as u32,
+                            SCREEN_HEIGHT as u32,
+                        ),
                         ..default()
                     }),
                     ..default()
@@ -37,7 +45,6 @@ fn main() {
         .add_systems(Update, player_rotation)
         .add_systems(Update, move_obstacles)
         .add_systems(Update, despawn_offscreen_entities)
-        .add_systems(Update, spawn_next_ground)
         .run();
 }
 
@@ -103,6 +110,7 @@ fn spawn_sprite(commands: &mut Commands, atlas: &Atlas, name: &str, pos: Vec3) {
             },
         ),
         Transform::from_translation(pos),
+        Anchor::CENTER,
     ));
 }
 
@@ -136,6 +144,7 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
             },
         ),
         Transform::from_xyz(-50.0, 0.0, 3.0),
+        Anchor::CENTER,
         Animation {
             frames,
             timer: Timer::from_seconds(0.1, TimerMode::Repeating),
@@ -208,9 +217,11 @@ fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
                 index: atlas.map["land"],
             },
         ),
-        Transform::from_xyz(0.0, -200.0, 2.0),
+        Transform::from_xyz(0.0, -512.0 / 2.0, 2.0),
+        Anchor::BOTTOM_CENTER,
         Ground,
     ));
+    spawn_next_ground(&mut commands, &atlas);
 }
 
 fn move_obstacles(
@@ -219,37 +230,56 @@ fn move_obstacles(
 ) {
     for mut transform in &mut query {
         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
+        // println!("{}", transform.translation.x);
     }
 }
 
-fn spawn_next_ground(
+fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
+    println!("SPAWN NEXT GROUND");
+    commands.spawn((
+        Sprite::from_atlas_image(
+            atlas.texture.clone(),
+            TextureAtlas {
+                layout: atlas.layout.clone(),
+                index: atlas.map["land"],
+            },
+        ),
+        Transform::from_xyz(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -512.0 / 2.0, 2.0),
+        Ground,
+        Anchor::BOTTOM_CENTER,
+    ));
+}
+
+fn despawn_offscreen_entities(
     mut commands: Commands,
     atlas: Res<Atlas>,
-    query: Query<&Transform, With<Ground>>,
+    query: Query<(Entity, &Transform, Option<&Ground>, Option<&Pipe>)>,
 ) {
-    for transform in &query {
-        if transform.translation.x == 0.0 {
-            println!("SPAWN NEXT GROUND");
-            commands.spawn((
-                Sprite::from_atlas_image(
-                    atlas.texture.clone(),
-                    TextureAtlas {
-                        layout: atlas.layout.clone(),
-                        index: atlas.map["land"],
-                    },
-                ),
-                Transform::from_xyz(SPAWN_LOCATION, -200.0, 2.0),
-                Ground,
-            ));
+    for (entity, transform, maybe_ground, maybe_pipe) in &query {
+        // if transform.translation.x < DESPAWN_LOCATION {
+        //     commands.entity(entity).despawn();
+        //     // println!("REMOVED ENTITY");
+        //     if let Some(_) = maybe_ground {
+        //         println!("REMOVED GROUND");
+        //         spawn_next_ground(&mut commands, &atlas);
+        //     }
+        //     if let Some(_) = maybe_pipe {
+        //         println!("REMOVED PIPE");
+        //     }
+        // }
+        // println!("REMOVED ENTITY");
+        if let Some(_) = maybe_ground {
+            if transform.translation.x <= (-SCREEN_WIDTH - 336.0) / 2.0 {
+                commands.entity(entity).despawn();
+                println!("REMOVED GROUND");
+                spawn_next_ground(&mut commands, &atlas);
+            }
         }
-    }
-}
-
-fn despawn_offscreen_entities(mut commands: Commands, query: Query<(Entity, &Transform)>) {
-    for (entity, transform) in &query {
-        if transform.translation.x < DESPAWN_LOCATION {
-            commands.entity(entity).despawn();
-            // println!("REMOVED ENTITY");
+        if let Some(_) = maybe_pipe {
+            if transform.translation.x <= 0.0 {
+                commands.entity(entity).despawn();
+                println!("REMOVED PIPE");
+            }
         }
     }
 }
