@@ -275,9 +275,7 @@ struct Pipe;
 
 fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
     for i in 0..200 {
-        println!("Spawning Pipes {}", i + 1);
-        let pipe_offset: f32 = rand::random_range(-100.0..100.0);
-        // println!("{}", pipe_offset);
+        let pipe_offset: f32 = rand::random_range(-75.0..185.0);
         commands.spawn((
             Sprite::from_atlas_image(
                 atlas.texture.clone(),
@@ -286,8 +284,13 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
                     index: atlas.map["pipe_up"],
                 },
             ),
-            Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32, PIPE_GAP + pipe_offset, 1.0),
+            Transform::from_xyz(
+                (SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32,
+                -PIPE_GAP + pipe_offset,
+                1.0,
+            ),
             Pipe,
+            Anchor::TOP_CENTER,
         ));
         commands.spawn((
             Sprite::from_atlas_image(
@@ -297,16 +300,20 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
                     index: atlas.map["pipe_down"],
                 },
             ),
-            Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32, -PIPE_GAP - pipe_offset, 1.0),
+            Transform::from_xyz(
+                (SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32,
+                PIPE_GAP + pipe_offset,
+                1.0,
+            ),
             Pipe,
+            Anchor::BOTTOM_CENTER,
         ));
     }
 }
 
 fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
     println!("SPAWNED NEXT PIPES");
-    let pipe_offset: f32 = rand::random_range(-100.0..100.0);
-    // println!("{}", pipe_offset);
+    let pipe_offset: f32 = rand::random_range(-75.0..185.0);
     commands.spawn((
         Sprite::from_atlas_image(
             atlas.texture.clone(),
@@ -315,8 +322,9 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
                 index: atlas.map["pipe_up"],
             },
         ),
-        Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, -PIPE_GAP - pipe_offset, 1.0),
+        Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, -PIPE_GAP + pipe_offset, 1.0),
         Pipe,
+        Anchor::TOP_CENTER,
     ));
     commands.spawn((
         Sprite::from_atlas_image(
@@ -328,5 +336,6 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         ),
         Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, PIPE_GAP + pipe_offset, 1.0),
         Pipe,
+        Anchor::BOTTOM_CENTER,
     ));
 }
