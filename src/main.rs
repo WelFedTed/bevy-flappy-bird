@@ -230,7 +230,7 @@ fn move_obstacles(
 }
 
 fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
-    println!("SPAWNED NEXT GROUND");
+    // println!("SPAWNED NEXT GROUND");
     commands.spawn((
         Sprite::from_atlas_image(
             atlas.texture.clone(),
@@ -248,14 +248,20 @@ fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
 fn despawn_offscreen_entities(
     mut commands: Commands,
     atlas: Res<Atlas>,
-    query: Query<(Entity, &Transform, Option<&Ground>, Option<&Pipe>)>,
+    query: Query<(
+        Entity,
+        &Transform,
+        Option<&Ground>,
+        Option<&Pipe>,
+        Option<&PipeTop>,
+    )>,
 ) {
-    for (entity, transform, maybe_ground, maybe_pipe) in &query {
+    for (entity, transform, maybe_ground, maybe_pipe, maybe_pipe_top) in &query {
         if let Some(_) = maybe_ground {
             if transform.translation.x <= (-SCREEN_WIDTH - 336.0) / 2.0 {
                 // note: ground sprite width = 336.0
                 commands.entity(entity).despawn();
-                println!("REMOVED GROUND");
+                // println!("REMOVED GROUND");
                 spawn_next_ground(&mut commands, &atlas);
             }
         }
@@ -263,8 +269,10 @@ fn despawn_offscreen_entities(
             if transform.translation.x <= -(SCREEN_WIDTH + 52.0) / 2.0 {
                 // note: pipe sprite width = 52.0
                 commands.entity(entity).despawn();
-                println!("REMOVED PIPE");
-                // spawn_next_pipes(&mut commands, &atlas);
+                // println!("REMOVED PIPE");
+                if let Some(_) = maybe_pipe_top {
+                    spawn_next_pipes(&mut commands, &atlas);
+                }
             }
         }
     }
@@ -273,8 +281,14 @@ fn despawn_offscreen_entities(
 #[derive(Component)]
 struct Pipe;
 
+#[derive(Component)]
+struct PipeTop;
+
+#[derive(Component)]
+struct PipeBottom;
+
 fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
-    for i in 0..200 {
+    for i in 0..2 {
         let pipe_offset: f32 = rand::random_range(-75.0..185.0);
         commands.spawn((
             Sprite::from_atlas_image(
@@ -290,6 +304,7 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
                 1.0,
             ),
             Pipe,
+            PipeBottom,
             Anchor::TOP_CENTER,
         ));
         commands.spawn((
@@ -306,13 +321,14 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
                 1.0,
             ),
             Pipe,
+            PipeTop,
             Anchor::BOTTOM_CENTER,
         ));
     }
 }
 
 fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
-    println!("SPAWNED NEXT PIPES");
+    // println!("SPAWNED NEXT PIPES");
     let pipe_offset: f32 = rand::random_range(-75.0..185.0);
     commands.spawn((
         Sprite::from_atlas_image(
@@ -324,6 +340,7 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         ),
         Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, -PIPE_GAP + pipe_offset, 1.0),
         Pipe,
+        PipeBottom,
         Anchor::TOP_CENTER,
     ));
     commands.spawn((
@@ -336,6 +353,7 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         ),
         Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, PIPE_GAP + pipe_offset, 1.0),
         Pipe,
+        PipeTop,
         Anchor::BOTTOM_CENTER,
     ));
 }
