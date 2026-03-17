@@ -186,11 +186,18 @@ fn apply_gravity(time: Res<Time>, mut query: Query<&mut Velocity, With<Player>>)
     }
 }
 
-fn player_jump(keyboard: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Velocity, With<Player>>) {
+fn player_jump(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    mut query: Query<&mut Velocity, With<Player>>,
+) {
     if keyboard.just_pressed(KeyCode::Space) {
         for mut velocity in &mut query {
             velocity.y = JUMP_STRENGTH;
         }
+        let audio = asset_server.load("sfx_wing.ogg");
+        commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
     }
 }
 
