@@ -1,7 +1,5 @@
-// use bevy::math::bounding::Aabb2d;
-// use bevy::math::bounding::BoundingCircle;
 use bevy::color::palettes::css::*;
-use bevy::math::{Isometry2d, VectorSpace, bounding::*, ops};
+use bevy::math::bounding::*;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::window::{WindowPlugin, WindowResolution};
@@ -405,7 +403,16 @@ fn check_for_collisions(
     time: Res<Time>,
     mut volumes: Query<(&CurrentVolume, &mut Intersects)>,
     players: Query<&Transform, With<Player>>,
-    obstacles: Query<(&Transform, Option<&Ground>, Option<&Pipe>), With<Obstacle>>,
+    obstacles: Query<
+        (
+            &Transform,
+            Option<&Ground>,
+            Option<&Pipe>,
+            Option<&PipeTop>,
+            Option<&PipeBottom>,
+        ),
+        With<Obstacle>,
+    >,
 ) {
     let center = get_intersection_position(&time);
     let circle = BoundingCircle::new(center, 50.);
@@ -420,13 +427,41 @@ fn check_for_collisions(
             RED,
         );
     }
-    for (obstacle_transform, maybe_ground, maybe_pipe) in &obstacles {
+    for (obstacle_transform, maybe_ground, maybe_pipe, maybe_pipe_top, maybe_pipe_bottom) in
+        &obstacles
+    {
+        let size: Vec2;
         if let Some(_) = maybe_ground {
-            gizmos.rect_2d(vec2(obstacle_transform.translation.x, obstacle_transform.translation.y), vec2(GROUND_WIDTH, GROUND_HEIGHT), BLUE);
+            size = vec2(GROUND_WIDTH, GROUND_HEIGHT);
+        } else if let Some(_) = maybe_pipe {
+            size = vec2(PIPE_WIDTH, PIPE_HEIGHT);
+        } else {
+            continue;
         }
-        if let Some(_) = maybe_pipe {
-            gizmos.rect_2d(Vec2::ZERO, vec2(PIPE_WIDTH, PIPE_HEIGHT),BLUE);
+        let position: Vec2;
+        if let Some(_) = maybe_ground {
+            position = vec2(
+                obstacle_transform.translation.x - GROUND_WIDTH / 2.0,
+                obstacle_transform.translation.y + GROUND_HEIGHT / 2.0,
+            );
+        } else if let Some(_) = maybe_pipe {
+            if let Some(_) = maybe_pipe_top {
+                position = vec2(
+                    obstacle_transform.translation.x,
+                    obstacle_transform.translation.y + PIPE_HEIGHT / 2.0,
+                );
+            } else if let Some(_) = maybe_pipe_bottom {
+                position = vec2(
+                    obstacle_transform.translation.x,
+                    obstacle_transform.translation.y - PIPE_HEIGHT / 2.0,
+                );
+            } else {
+                continue;
+            };
+        } else {
+            continue;
         }
+        gizmos.rect_2d(position, size, BLUE);
     }
 
     for (volume, mut intersects) in volumes.iter_mut() {
