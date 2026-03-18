@@ -18,6 +18,7 @@ const GROUND_HEIGHT: f32 = 112.0;
 const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_RADIUS: f32 = 15.0; // radius of the player's collision circle
+const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
 
 fn main() {
     App::new()
@@ -416,52 +417,54 @@ fn check_for_collisions(
 ) {
     let center = get_intersection_position(&time);
     let circle = BoundingCircle::new(center, 50.);
-    gizmos.circle_2d(center, circle.radius(), YELLOW);
-    for player_transform in &players {
-        gizmos.circle_2d(
-            vec2(
-                player_transform.translation.x,
-                player_transform.translation.y,
-            ),
-            PLAYER_RADIUS,
-            RED,
-        );
-    }
-    for (obstacle_transform, maybe_ground, maybe_pipe, maybe_pipe_top, maybe_pipe_bottom) in
-        &obstacles
-    {
-        let size: Vec2;
-        if let Some(_) = maybe_ground {
-            size = vec2(GROUND_WIDTH, GROUND_HEIGHT);
-        } else if let Some(_) = maybe_pipe {
-            size = vec2(PIPE_WIDTH, PIPE_HEIGHT);
-        } else {
-            continue;
-        }
-        let position: Vec2;
-        if let Some(_) = maybe_ground {
-            position = vec2(
-                obstacle_transform.translation.x - GROUND_WIDTH / 2.0,
-                obstacle_transform.translation.y + GROUND_HEIGHT / 2.0,
+    if DRAW_DEBUG {
+        gizmos.circle_2d(center, circle.radius(), YELLOW);
+        for player_transform in &players {
+            gizmos.circle_2d(
+                vec2(
+                    player_transform.translation.x,
+                    player_transform.translation.y,
+                ),
+                PLAYER_RADIUS,
+                RED,
             );
-        } else if let Some(_) = maybe_pipe {
-            if let Some(_) = maybe_pipe_top {
-                position = vec2(
-                    obstacle_transform.translation.x,
-                    obstacle_transform.translation.y + PIPE_HEIGHT / 2.0,
-                );
-            } else if let Some(_) = maybe_pipe_bottom {
-                position = vec2(
-                    obstacle_transform.translation.x,
-                    obstacle_transform.translation.y - PIPE_HEIGHT / 2.0,
-                );
+        }
+        for (obstacle_transform, maybe_ground, maybe_pipe, maybe_pipe_top, maybe_pipe_bottom) in
+            &obstacles
+        {
+            let size: Vec2;
+            if let Some(_) = maybe_ground {
+                size = vec2(GROUND_WIDTH, GROUND_HEIGHT);
+            } else if let Some(_) = maybe_pipe {
+                size = vec2(PIPE_WIDTH, PIPE_HEIGHT);
             } else {
                 continue;
-            };
-        } else {
-            continue;
+            }
+            let position: Vec2;
+            if let Some(_) = maybe_ground {
+                position = vec2(
+                    obstacle_transform.translation.x - GROUND_WIDTH / 2.0,
+                    obstacle_transform.translation.y + GROUND_HEIGHT / 2.0,
+                );
+            } else if let Some(_) = maybe_pipe {
+                if let Some(_) = maybe_pipe_top {
+                    position = vec2(
+                        obstacle_transform.translation.x,
+                        obstacle_transform.translation.y + PIPE_HEIGHT / 2.0,
+                    );
+                } else if let Some(_) = maybe_pipe_bottom {
+                    position = vec2(
+                        obstacle_transform.translation.x,
+                        obstacle_transform.translation.y - PIPE_HEIGHT / 2.0,
+                    );
+                } else {
+                    continue;
+                };
+            } else {
+                continue;
+            }
+            gizmos.rect_2d(position, size, BLUE);
         }
-        gizmos.rect_2d(position, size, BLUE);
     }
 
     for (volume, mut intersects) in volumes.iter_mut() {
