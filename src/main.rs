@@ -291,8 +291,7 @@ fn despawn_offscreen_entities(
             }
         }
         if let Some(_) = maybe_pipe {
-            if transform.translation.x <= -(SCREEN_WIDTH + 52.0) / 2.0 {
-                // note: pipe sprite width = 52.0
+            if transform.translation.x <= -(SCREEN_WIDTH + PIPE_WIDTH) / 2.0 {
                 commands.entity(entity).despawn();
                 // println!("REMOVED PIPE");
                 if let Some(_) = maybe_pipe_top {
@@ -324,7 +323,7 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
                 },
             ),
             Transform::from_xyz(
-                (SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32,
+                (SCREEN_WIDTH + PIPE_WIDTH) / 2.0 + PIPE_INTERVAL * i as f32,
                 -PIPE_GAP + pipe_offset,
                 1.0,
             ),
@@ -342,7 +341,7 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
                 },
             ),
             Transform::from_xyz(
-                (SCREEN_WIDTH + 52.0) / 2.0 + PIPE_INTERVAL * i as f32,
+                (SCREEN_WIDTH + PIPE_WIDTH) / 2.0 + PIPE_INTERVAL * i as f32,
                 PIPE_GAP + pipe_offset,
                 1.0,
             ),
@@ -365,7 +364,11 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
                 index: atlas.map["pipe_up"],
             },
         ),
-        Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, -PIPE_GAP + pipe_offset, 1.0),
+        Transform::from_xyz(
+            (SCREEN_WIDTH + PIPE_WIDTH) / 2.0,
+            -PIPE_GAP + pipe_offset,
+            1.0,
+        ),
         Pipe,
         PipeBottom,
         Obstacle,
@@ -379,7 +382,11 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
                 index: atlas.map["pipe_down"],
             },
         ),
-        Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, PIPE_GAP + pipe_offset, 1.0),
+        Transform::from_xyz(
+            (SCREEN_WIDTH + PIPE_WIDTH) / 2.0,
+            PIPE_GAP + pipe_offset,
+            1.0,
+        ),
         Pipe,
         PipeTop,
         Obstacle,
