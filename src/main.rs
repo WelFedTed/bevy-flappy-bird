@@ -18,7 +18,7 @@ const GROUND_HEIGHT: f32 = 112.0;
 const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_RADIUS: f32 = 15.0; // radius of the player's collision circle
-const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
+const DRAW_DEBUG: bool = true; // toggle to draw debug gizmos for collision detection
 
 fn main() {
     App::new()
@@ -157,7 +157,7 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
         },
         Player,
         Velocity { y: 0.0 },
-        CurrentVolume::Circle(BoundingCircle::new(Vec2::new(0.0, 0.0), 48.0 / 2.0)), // 48 px diameter
+        CurrentVolume::Circle(BoundingCircle::new(Vec2::new(0.0, 0.0), PLAYER_RADIUS)),
         Intersects(false),
     ));
 }
@@ -423,9 +423,18 @@ fn check_for_collisions(
     >,
 ) {
     let center = get_intersection_position(&time);
-    let circle = BoundingCircle::new(center, 50.);
+    let mut circle = BoundingCircle::new(center, 50.);
+    for player_transform in &players {
+        circle = BoundingCircle::new(
+            vec2(
+                player_transform.translation.x,
+                player_transform.translation.y,
+            ),
+            PLAYER_RADIUS,
+        )
+    }
     if DRAW_DEBUG {
-        gizmos.circle_2d(center, circle.radius(), YELLOW);
+        gizmos.circle_2d(circle.center, circle.radius() + 10.0, YELLOW);
         for player_transform in &players {
             gizmos.circle_2d(
                 vec2(
@@ -481,6 +490,10 @@ fn check_for_collisions(
         };
 
         **intersects = hit;
+
+        if hit {
+            println!("HIT {:?}", circle.center);
+        }
     }
 }
 
