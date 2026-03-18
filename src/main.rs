@@ -1,3 +1,7 @@
+// use bevy::math::bounding::Aabb2d;
+// use bevy::math::bounding::BoundingCircle;
+use bevy::color::palettes::css::*;
+use bevy::math::{Isometry2d, VectorSpace, bounding::*, ops};
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::window::{WindowPlugin, WindowResolution};
@@ -11,6 +15,11 @@ const MAX_FALL_SPEED: f32 = -400.0;
 const SCROLL_SPEED: f32 = 100.0;
 const PIPE_GAP: f32 = 50.0; // distance between pipes vertically for bird to pass through
 const PIPE_INTERVAL: f32 = 175.0; // distance between pipe pairs horizontally
+const GROUND_WIDTH: f32 = 288.0;
+const GROUND_HEIGHT: f32 = 112.0;
+const PIPE_WIDTH: f32 = 52.0;
+const PIPE_HEIGHT: f32 = 320.0;
+const PLAYER_RADIUS: f32 = 15.0; // radius of the player's collision circle
 
 fn main() {
     App::new()
@@ -41,6 +50,7 @@ fn main() {
         .add_systems(Update, player_rotation)
         .add_systems(Update, move_obstacles)
         .add_systems(Update, despawn_offscreen_entities)
+        .add_systems(Update, check_for_collisions)
         .run();
 }
 
@@ -148,6 +158,8 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
         },
         Player,
         Velocity { y: 0.0 },
+        CurrentVolume::Circle(BoundingCircle::new(Vec2::new(0.0, 0.0), 48.0 / 2.0)), // 48 px diameter
+        Intersects(false),
     ));
 }
 
@@ -223,6 +235,7 @@ fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
         Transform::from_xyz(0.0, -512.0 / 2.0, 2.0),
         Anchor::BOTTOM_CENTER,
         Ground,
+        Obstacle,
     ));
     spawn_next_ground(&mut commands, &atlas);
 }
@@ -248,6 +261,12 @@ fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
         ),
         Transform::from_xyz(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -512.0 / 2.0, 2.0),
         Ground,
+        Obstacle,
+        CurrentVolume::Aabb(Aabb2d::new(
+            Vec2::new(0.0, GROUND_HEIGHT),
+            Vec2::new(GROUND_WIDTH / 2.0, GROUND_HEIGHT / 2.0),
+        )),
+        Intersects(false),
         Anchor::BOTTOM_CENTER,
     ));
 }
@@ -312,6 +331,7 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
             ),
             Pipe,
             PipeBottom,
+            Obstacle,
             Anchor::TOP_CENTER,
         ));
         commands.spawn((
@@ -329,6 +349,7 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
             ),
             Pipe,
             PipeTop,
+            Obstacle,
             Anchor::BOTTOM_CENTER,
         ));
     }
@@ -348,6 +369,7 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, -PIPE_GAP + pipe_offset, 1.0),
         Pipe,
         PipeBottom,
+        Obstacle,
         Anchor::TOP_CENTER,
     ));
     commands.spawn((
@@ -361,6 +383,64 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         Transform::from_xyz((SCREEN_WIDTH + 52.0) / 2.0, PIPE_GAP + pipe_offset, 1.0),
         Pipe,
         PipeTop,
+        Obstacle,
         Anchor::BOTTOM_CENTER,
     ));
+}
+
+#[derive(Component)]
+struct Obstacle;
+
+#[derive(Component, Clone, Copy)]
+enum CurrentVolume {
+    Circle(BoundingCircle),
+    Aabb(Aabb2d),
+}
+
+#[derive(Component, Deref, DerefMut)]
+struct Intersects(pub bool);
+
+fn check_for_collisions(
+    mut gizmos: Gizmos,
+    time: Res<Time>,
+    mut volumes: Query<(&CurrentVolume, &mut Intersects)>,
+    players: Query<&Transform, With<Player>>,
+    obstacles: Query<(&Transform, Option<&Ground>, Option<&Pipe>), With<Obstacle>>,
+) {
+    let center = get_intersection_position(&time);
+    let circle = BoundingCircle::new(center, 50.);
+    gizmos.circle_2d(center, circle.radius(), YELLOW);
+    for player_transform in &players {
+        gizmos.circle_2d(
+            vec2(
+                player_transform.translation.x,
+                player_transform.translation.y,
+            ),
+            PLAYER_RADIUS,
+            RED,
+        );
+    }
+    for (obstacle_transform, maybe_ground, maybe_pipe) in &obstacles {
+        if let Some(_) = maybe_ground {
+            gizmos.rect_2d(vec2(obstacle_transform.translation.x, obstacle_transform.translation.y), vec2(GROUND_WIDTH, GROUND_HEIGHT), BLUE);
+        }
+        if let Some(_) = maybe_pipe {
+            gizmos.rect_2d(Vec2::ZERO, vec2(PIPE_WIDTH, PIPE_HEIGHT),BLUE);
+        }
+    }
+
+    for (volume, mut intersects) in volumes.iter_mut() {
+        let hit = match volume {
+            CurrentVolume::Aabb(a) => circle.intersects(a),
+            CurrentVolume::Circle(c) => circle.intersects(c),
+        };
+
+        **intersects = hit;
+    }
+}
+
+fn get_intersection_position(time: &Time) -> Vec2 {
+    let x = ops::cos(0.8 * time.elapsed_secs()) * 250.;
+    let y = ops::sin(0.4 * time.elapsed_secs()) * 100.;
+    Vec2::new(x, y)
 }
