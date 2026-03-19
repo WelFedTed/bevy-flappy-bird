@@ -50,6 +50,7 @@ fn main() {
         .add_systems(Update, move_obstacles)
         .add_systems(Update, despawn_offscreen_entities)
         .add_systems(Update, check_for_collisions)
+        .add_systems(PostUpdate, render_volumes)
         .run();
 }
 
@@ -423,7 +424,7 @@ fn check_for_collisions(
     >,
 ) {
     let center = get_intersection_position(&time);
-    let mut circle = BoundingCircle::new(center, 50.);
+    let mut circle = BoundingCircle::new(center, 50.0);
     for player_transform in &players {
         circle = BoundingCircle::new(
             vec2(
@@ -434,54 +435,56 @@ fn check_for_collisions(
         )
     }
     if DRAW_DEBUG {
-        gizmos.circle_2d(circle.center, circle.radius() + 10.0, YELLOW);
-        for player_transform in &players {
-            gizmos.circle_2d(
-                vec2(
-                    player_transform.translation.x,
-                    player_transform.translation.y,
-                ),
-                PLAYER_RADIUS,
-                RED,
-            );
-        }
-        for (obstacle_transform, maybe_ground, maybe_pipe, maybe_pipe_top, maybe_pipe_bottom) in
-            &obstacles
-        {
-            let size: Vec2;
-            if let Some(_) = maybe_ground {
-                size = vec2(GROUND_WIDTH, GROUND_HEIGHT);
-            } else if let Some(_) = maybe_pipe {
-                size = vec2(PIPE_WIDTH, PIPE_HEIGHT);
-            } else {
-                continue;
-            }
-            let position: Vec2;
-            if let Some(_) = maybe_ground {
-                position = vec2(
-                    obstacle_transform.translation.x - GROUND_WIDTH / 2.0,
-                    obstacle_transform.translation.y + GROUND_HEIGHT / 2.0,
-                );
-            } else if let Some(_) = maybe_pipe {
-                if let Some(_) = maybe_pipe_top {
-                    position = vec2(
-                        obstacle_transform.translation.x,
-                        obstacle_transform.translation.y + PIPE_HEIGHT / 2.0,
-                    );
-                } else if let Some(_) = maybe_pipe_bottom {
-                    position = vec2(
-                        obstacle_transform.translation.x,
-                        obstacle_transform.translation.y - PIPE_HEIGHT / 2.0,
-                    );
-                } else {
-                    continue;
-                };
-            } else {
-                continue;
-            }
-            gizmos.rect_2d(position, size, BLUE);
-        }
+        gizmos.circle_2d(circle.center, circle.radius(), YELLOW);
     }
+    // if DRAW_DEBUG {
+    //     for player_transform in &players {
+    //         gizmos.circle_2d(
+    //             vec2(
+    //                 player_transform.translation.x,
+    //                 player_transform.translation.y,
+    //             ),
+    //             PLAYER_RADIUS,
+    //             RED,
+    //         );
+    //     }
+    //     for (obstacle_transform, maybe_ground, maybe_pipe, maybe_pipe_top, maybe_pipe_bottom) in
+    //         &obstacles
+    //     {
+    //         let size: Vec2;
+    //         if let Some(_) = maybe_ground {
+    //             size = vec2(GROUND_WIDTH, GROUND_HEIGHT);
+    //         } else if let Some(_) = maybe_pipe {
+    //             size = vec2(PIPE_WIDTH, PIPE_HEIGHT);
+    //         } else {
+    //             continue;
+    //         }
+    //         let position: Vec2;
+    //         if let Some(_) = maybe_ground {
+    //             position = vec2(
+    //                 obstacle_transform.translation.x - GROUND_WIDTH / 2.0,
+    //                 obstacle_transform.translation.y + GROUND_HEIGHT / 2.0,
+    //             );
+    //         } else if let Some(_) = maybe_pipe {
+    //             if let Some(_) = maybe_pipe_top {
+    //                 position = vec2(
+    //                     obstacle_transform.translation.x,
+    //                     obstacle_transform.translation.y + PIPE_HEIGHT / 2.0,
+    //                 );
+    //             } else if let Some(_) = maybe_pipe_bottom {
+    //                 position = vec2(
+    //                     obstacle_transform.translation.x,
+    //                     obstacle_transform.translation.y - PIPE_HEIGHT / 2.0,
+    //                 );
+    //             } else {
+    //                 continue;
+    //             };
+    //         } else {
+    //             continue;
+    //         }
+    //         gizmos.rect_2d(position, size, BLUE);
+    //     }
+    // }
 
     for (volume, mut intersects) in volumes.iter_mut() {
         let hit = match volume {
@@ -501,4 +504,20 @@ fn get_intersection_position(time: &Time) -> Vec2 {
     let x = ops::cos(0.8 * time.elapsed_secs()) * 250.;
     let y = ops::sin(0.4 * time.elapsed_secs()) * 100.;
     Vec2::new(x, y)
+}
+
+fn render_volumes(mut gizmos: Gizmos, query: Query<(&CurrentVolume, &Intersects)>) {
+    if DRAW_DEBUG {
+        for (volume, intersects) in query.iter() {
+            let color = if **intersects { AQUA } else { ORANGE_RED };
+            match volume {
+                CurrentVolume::Aabb(a) => {
+                    gizmos.rect_2d(a.center(), a.half_size() * 2., color);
+                }
+                CurrentVolume::Circle(c) => {
+                    gizmos.circle_2d(c.center(), c.radius(), color);
+                }
+            }
+        }
+    }
 }
