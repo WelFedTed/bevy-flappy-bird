@@ -1,4 +1,5 @@
 use bevy::color::palettes::css::*;
+use bevy::ecs::change_detection::MaybeLocation;
 use bevy::math::bounding::*;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
@@ -245,26 +246,26 @@ fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
     spawn_next_ground(&mut commands, &atlas);
 }
 
-// fn move_obstacles(
-//     time: Res<Time>,
-//     mut query: Query<(&mut Transform, &mut CurrentVolume), With<Obstacle>>,
-// ) {
-//     for (mut transform, mut volume) in &mut query {
-//         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
-//         match &mut *volume {
-//             CurrentVolume::Aabb(aabb) => {
-//                 aabb.min.x = transform.translation.x - transform.scale.x / 2.0;
-//                 aabb.max.x = transform.translation.x + transform.scale.x / 2.0;
-//             }
-//             CurrentVolume::Circle(circle) => {
-//                 circle.center.x = transform.translation.x;
-//             }
-//         }
-//     }
-// }
-fn move_obstacles(time: Res<Time>, mut query: Query<&mut Transform, With<Obstacle>>) {
-    for mut transform in &mut query {
+fn move_obstacles(
+    time: Res<Time>,
+    mut obstacles: Query<(&mut Transform, &mut CurrentVolume, Option<&Ground>, Option<&Pipe>), With<Obstacle>>,
+) {
+    for (mut transform, mut volume, maybe_ground, maybe_pipe) in &mut obstacles {
         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
+        match &mut *volume {
+            CurrentVolume::Aabb(aabb) => {
+                if let Some(_ground) = maybe_ground {
+                    aabb.min.x = transform.translation.x - GROUND_WIDTH / 2.0;
+                    aabb.max.x = transform.translation.x + GROUND_WIDTH / 2.0;
+                } else if let Some(_pipe) = maybe_pipe {
+                    aabb.min.x = transform.translation.x - PIPE_WIDTH / 2.0;
+                    aabb.max.x = transform.translation.x + PIPE_WIDTH / 2.0;
+                }
+            }
+            CurrentVolume::Circle(circle) => {
+                circle.center = vec2(transform.translation.x, transform.translation.y);
+            }
+        }
     }
 }
 
@@ -281,6 +282,11 @@ fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
         Transform::from_xyz(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -SCREEN_HEIGHT / 2.0, 2.0),
         Ground,
         Obstacle,
+        CurrentVolume::Aabb(Aabb2d::new(
+            Vec2::new(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -SCREEN_HEIGHT / 2.0 + GROUND_HEIGHT / 2.0),
+            Vec2::new(GROUND_WIDTH / 2.0, GROUND_HEIGHT / 2.0),
+        )),
+        Intersects(false),
         Anchor::BOTTOM_CENTER,
     ));
 }
@@ -345,6 +351,11 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
             Pipe,
             PipeBottom,
             Obstacle,
+            CurrentVolume::Aabb(Aabb2d::new(
+                Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0 + PIPE_INTERVAL * i as f32, -PIPE_GAP + pipe_offset),
+                Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+            )),
+            Intersects(false),
             Anchor::TOP_CENTER,
         ));
         commands.spawn((
@@ -363,6 +374,11 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
             Pipe,
             PipeTop,
             Obstacle,
+            CurrentVolume::Aabb(Aabb2d::new(
+                Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0 + PIPE_INTERVAL * i as f32, PIPE_GAP + pipe_offset),
+                Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+            )),
+            Intersects(false),
             Anchor::BOTTOM_CENTER,
         ));
     }
@@ -387,6 +403,11 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         Pipe,
         PipeBottom,
         Obstacle,
+        CurrentVolume::Aabb(Aabb2d::new(
+            Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0, -PIPE_GAP + pipe_offset),
+            Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+        )),
+        Intersects(false),
         Anchor::TOP_CENTER,
     ));
     commands.spawn((
@@ -405,6 +426,11 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         Pipe,
         PipeTop,
         Obstacle,
+        CurrentVolume::Aabb(Aabb2d::new(
+            Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0, PIPE_GAP + pipe_offset),
+            Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+        )),
+        Intersects(false),
         Anchor::BOTTOM_CENTER,
     ));
 }
