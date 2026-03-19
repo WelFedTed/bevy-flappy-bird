@@ -158,7 +158,7 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
         },
         Player,
         Velocity { y: 0.0 },
-        CurrentVolume::Circle(BoundingCircle::new(Vec2::new(0.0, 0.0), PLAYER_RADIUS)),
+        CurrentVolume::Circle(BoundingCircle::new(Vec2::new(-50.0, 0.0), PLAYER_RADIUS)),
         Intersects(false),
     ));
 }
@@ -232,18 +232,37 @@ fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
                 index: atlas.map["land"],
             },
         ),
-        Transform::from_xyz(0.0, -512.0 / 2.0, 2.0),
+        Transform::from_xyz(0.0, -SCREEN_HEIGHT / 2.0, 2.0),
         Anchor::BOTTOM_CENTER,
         Ground,
         Obstacle,
+        CurrentVolume::Aabb(Aabb2d::new(
+            Vec2::new(0.0, -SCREEN_HEIGHT / 2.0 + GROUND_HEIGHT / 2.0),
+            Vec2::new(GROUND_WIDTH / 2.0, GROUND_HEIGHT / 2.0),
+        )),
+        Intersects(false),
     ));
     spawn_next_ground(&mut commands, &atlas);
 }
 
-fn move_obstacles(
-    time: Res<Time>,
-    mut query: Query<&mut Transform, Or<(With<Ground>, With<Pipe>)>>,
-) {
+// fn move_obstacles(
+//     time: Res<Time>,
+//     mut query: Query<(&mut Transform, &mut CurrentVolume), With<Obstacle>>,
+// ) {
+//     for (mut transform, mut volume) in &mut query {
+//         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
+//         match &mut *volume {
+//             CurrentVolume::Aabb(aabb) => {
+//                 aabb.min.x = transform.translation.x - transform.scale.x / 2.0;
+//                 aabb.max.x = transform.translation.x + transform.scale.x / 2.0;
+//             }
+//             CurrentVolume::Circle(circle) => {
+//                 circle.center.x = transform.translation.x;
+//             }
+//         }
+//     }
+// }
+fn move_obstacles(time: Res<Time>, mut query: Query<&mut Transform, With<Obstacle>>) {
     for mut transform in &mut query {
         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
     }
@@ -259,14 +278,9 @@ fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
                 index: atlas.map["land"],
             },
         ),
-        Transform::from_xyz(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -512.0 / 2.0, 2.0),
+        Transform::from_xyz(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -SCREEN_HEIGHT / 2.0, 2.0),
         Ground,
         Obstacle,
-        CurrentVolume::Aabb(Aabb2d::new(
-            Vec2::new(0.0, GROUND_HEIGHT),
-            Vec2::new(GROUND_WIDTH / 2.0, GROUND_HEIGHT / 2.0),
-        )),
-        Intersects(false),
         Anchor::BOTTOM_CENTER,
     ));
 }
@@ -409,7 +423,6 @@ struct Intersects(pub bool);
 
 fn check_for_collisions(
     mut gizmos: Gizmos,
-    time: Res<Time>,
     mut volumes: Query<(&CurrentVolume, &mut Intersects)>,
     players: Query<&Transform, With<Player>>,
     obstacles: Query<
@@ -423,8 +436,7 @@ fn check_for_collisions(
         With<Obstacle>,
     >,
 ) {
-    let center = get_intersection_position(&time);
-    let mut circle = BoundingCircle::new(center, 50.0);
+    let mut circle = BoundingCircle::new(Vec2::ZERO, 0.0);
     for player_transform in &players {
         circle = BoundingCircle::new(
             vec2(
@@ -500,19 +512,13 @@ fn check_for_collisions(
     }
 }
 
-fn get_intersection_position(time: &Time) -> Vec2 {
-    let x = ops::cos(0.8 * time.elapsed_secs()) * 250.;
-    let y = ops::sin(0.4 * time.elapsed_secs()) * 100.;
-    Vec2::new(x, y)
-}
-
 fn render_volumes(mut gizmos: Gizmos, query: Query<(&CurrentVolume, &Intersects)>) {
     if DRAW_DEBUG {
         for (volume, intersects) in query.iter() {
             let color = if **intersects { AQUA } else { ORANGE_RED };
             match volume {
                 CurrentVolume::Aabb(a) => {
-                    gizmos.rect_2d(a.center(), a.half_size() * 2., color);
+                    gizmos.rect_2d(a.center(), a.half_size() * 2.0, color);
                 }
                 CurrentVolume::Circle(c) => {
                     gizmos.circle_2d(c.center(), c.radius(), color);
