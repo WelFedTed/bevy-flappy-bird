@@ -13,12 +13,12 @@ const MAX_FALL_SPEED: f32 = -400.0;
 const SCROLL_SPEED: f32 = 100.0;
 const PIPE_GAP: f32 = 50.0; // distance between pipes vertically for bird to pass through
 const PIPE_INTERVAL: f32 = 175.0; // distance between pipe pairs horizontally
-const GROUND_WIDTH: f32 = 288.0;
+const GROUND_WIDTH: f32 = 336.0;
 const GROUND_HEIGHT: f32 = 112.0;
 const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_RADIUS: f32 = 15.0; // radius of the player's collision circle
-const DRAW_DEBUG: bool = true; // toggle to draw debug gizmos for collision detection
+const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
 
 fn main() {
     App::new()
@@ -237,8 +237,8 @@ fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
         Ground,
         Obstacle,
         CurrentVolume::Aabb(Aabb2d::new(
-            Vec2::new(0.0, -SCREEN_HEIGHT / 2.0 + GROUND_HEIGHT / 2.0),
-            Vec2::new(GROUND_WIDTH / 2.0, GROUND_HEIGHT / 2.0),
+            Vec2::new(0.0, GROUND_HEIGHT / 2.0 - SCREEN_HEIGHT / 2.0),
+            Vec2::new(0.0, GROUND_HEIGHT / 2.0),
         )),
         Intersects(false),
     ));
@@ -268,10 +268,9 @@ fn move_obstacles(
                     aabb.min.x = transform.translation.x - PIPE_WIDTH / 2.0;
                     aabb.max.x = transform.translation.x + PIPE_WIDTH / 2.0;
                 }
-            }
-            CurrentVolume::Circle(circle) => {
-                circle.center = vec2(transform.translation.x, transform.translation.y);
-            }
+            } // CurrentVolume::Circle(circle) => {
+              //     circle.center = vec2(transform.translation.x, transform.translation.y);
+              // }
         }
     }
 }
@@ -286,15 +285,16 @@ fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
                 index: atlas.map["land"],
             },
         ),
-        Transform::from_xyz(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -SCREEN_HEIGHT / 2.0, 2.0),
+        Transform::from_xyz(
+            SCREEN_WIDTH / 2.0 + GROUND_WIDTH / 2.0 + (GROUND_WIDTH - SCREEN_WIDTH) / 2.0,
+            -SCREEN_HEIGHT / 2.0,
+            2.0,
+        ),
         Ground,
         Obstacle,
         CurrentVolume::Aabb(Aabb2d::new(
-            Vec2::new(
-                SCREEN_WIDTH / 2.0 + 336.0 / 2.0,
-                -SCREEN_HEIGHT / 2.0 + GROUND_HEIGHT / 2.0,
-            ),
-            Vec2::new(GROUND_WIDTH / 2.0, GROUND_HEIGHT / 2.0),
+            Vec2::new(0.0, GROUND_HEIGHT / 2.0 - SCREEN_HEIGHT / 2.0),
+            Vec2::new(0.0, GROUND_HEIGHT / 2.0),
         )),
         Intersects(false),
         Anchor::BOTTOM_CENTER,
@@ -314,8 +314,7 @@ fn despawn_offscreen_entities(
 ) {
     for (entity, transform, maybe_ground, maybe_pipe, maybe_pipe_top) in &query {
         if let Some(_) = maybe_ground {
-            if transform.translation.x <= (-SCREEN_WIDTH - 336.0) / 2.0 {
-                // note: ground sprite width = 336.0
+            if transform.translation.x <= (-SCREEN_WIDTH - GROUND_WIDTH) / 2.0 {
                 commands.entity(entity).despawn();
                 // println!("REMOVED GROUND");
                 spawn_next_ground(&mut commands, &atlas);
@@ -450,7 +449,7 @@ struct Obstacle;
 
 #[derive(Component, Clone, Copy)]
 enum CurrentVolume {
-    Circle(BoundingCircle),
+    // Circle(BoundingCircle),
     Aabb(Aabb2d),
 }
 
@@ -461,16 +460,6 @@ fn check_for_collisions(
     mut gizmos: Gizmos,
     mut volumes: Query<(&CurrentVolume, &mut Intersects)>,
     players: Query<&Transform, With<Player>>,
-    obstacles: Query<
-        (
-            &Transform,
-            Option<&Ground>,
-            Option<&Pipe>,
-            Option<&PipeTop>,
-            Option<&PipeBottom>,
-        ),
-        With<Obstacle>,
-    >,
 ) {
     let mut circle = BoundingCircle::new(Vec2::ZERO, 0.0);
     for player_transform in &players {
@@ -485,59 +474,11 @@ fn check_for_collisions(
     if DRAW_DEBUG {
         gizmos.circle_2d(circle.center, circle.radius(), YELLOW);
     }
-    // if DRAW_DEBUG {
-    //     for player_transform in &players {
-    //         gizmos.circle_2d(
-    //             vec2(
-    //                 player_transform.translation.x,
-    //                 player_transform.translation.y,
-    //             ),
-    //             PLAYER_RADIUS,
-    //             RED,
-    //         );
-    //     }
-    //     for (obstacle_transform, maybe_ground, maybe_pipe, maybe_pipe_top, maybe_pipe_bottom) in
-    //         &obstacles
-    //     {
-    //         let size: Vec2;
-    //         if let Some(_) = maybe_ground {
-    //             size = vec2(GROUND_WIDTH, GROUND_HEIGHT);
-    //         } else if let Some(_) = maybe_pipe {
-    //             size = vec2(PIPE_WIDTH, PIPE_HEIGHT);
-    //         } else {
-    //             continue;
-    //         }
-    //         let position: Vec2;
-    //         if let Some(_) = maybe_ground {
-    //             position = vec2(
-    //                 obstacle_transform.translation.x - GROUND_WIDTH / 2.0,
-    //                 obstacle_transform.translation.y + GROUND_HEIGHT / 2.0,
-    //             );
-    //         } else if let Some(_) = maybe_pipe {
-    //             if let Some(_) = maybe_pipe_top {
-    //                 position = vec2(
-    //                     obstacle_transform.translation.x,
-    //                     obstacle_transform.translation.y + PIPE_HEIGHT / 2.0,
-    //                 );
-    //             } else if let Some(_) = maybe_pipe_bottom {
-    //                 position = vec2(
-    //                     obstacle_transform.translation.x,
-    //                     obstacle_transform.translation.y - PIPE_HEIGHT / 2.0,
-    //                 );
-    //             } else {
-    //                 continue;
-    //             };
-    //         } else {
-    //             continue;
-    //         }
-    //         gizmos.rect_2d(position, size, BLUE);
-    //     }
-    // }
 
     for (volume, mut intersects) in volumes.iter_mut() {
         let hit = match volume {
             CurrentVolume::Aabb(a) => circle.intersects(a),
-            CurrentVolume::Circle(c) => circle.intersects(c),
+            // CurrentVolume::Circle(c) => circle.intersects(c),
         };
 
         **intersects = hit;
@@ -555,10 +496,9 @@ fn render_volumes(mut gizmos: Gizmos, query: Query<(&CurrentVolume, &Intersects)
             match volume {
                 CurrentVolume::Aabb(a) => {
                     gizmos.rect_2d(a.center(), a.half_size() * 2.0, color);
-                }
-                CurrentVolume::Circle(c) => {
-                    gizmos.circle_2d(c.center(), c.radius(), color);
-                }
+                } // CurrentVolume::Circle(c) => {
+                  //     gizmos.circle_2d(c.center(), c.radius(), color);
+                  // }
             }
         }
     }
