@@ -1,5 +1,4 @@
 use bevy::color::palettes::css::*;
-use bevy::ecs::change_detection::MaybeLocation;
 use bevy::math::bounding::*;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
@@ -159,8 +158,8 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
         },
         Player,
         Velocity { y: 0.0 },
-        CurrentVolume::Circle(BoundingCircle::new(Vec2::new(-50.0, 0.0), PLAYER_RADIUS)),
-        Intersects(false),
+        // CurrentVolume::Circle(BoundingCircle::new(Vec2::new(-50.0, 0.0), PLAYER_RADIUS)),
+        // Intersects(false),
     ));
 }
 
@@ -248,7 +247,15 @@ fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
 
 fn move_obstacles(
     time: Res<Time>,
-    mut obstacles: Query<(&mut Transform, &mut CurrentVolume, Option<&Ground>, Option<&Pipe>), With<Obstacle>>,
+    mut obstacles: Query<
+        (
+            &mut Transform,
+            &mut CurrentVolume,
+            Option<&Ground>,
+            Option<&Pipe>,
+        ),
+        With<Obstacle>,
+    >,
 ) {
     for (mut transform, mut volume, maybe_ground, maybe_pipe) in &mut obstacles {
         transform.translation.x -= SCROLL_SPEED * time.delta_secs();
@@ -283,7 +290,10 @@ fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
         Ground,
         Obstacle,
         CurrentVolume::Aabb(Aabb2d::new(
-            Vec2::new(SCREEN_WIDTH / 2.0 + 336.0 / 2.0, -SCREEN_HEIGHT / 2.0 + GROUND_HEIGHT / 2.0),
+            Vec2::new(
+                SCREEN_WIDTH / 2.0 + 336.0 / 2.0,
+                -SCREEN_HEIGHT / 2.0 + GROUND_HEIGHT / 2.0,
+            ),
             Vec2::new(GROUND_WIDTH / 2.0, GROUND_HEIGHT / 2.0),
         )),
         Intersects(false),
@@ -352,8 +362,8 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
             PipeBottom,
             Obstacle,
             CurrentVolume::Aabb(Aabb2d::new(
-                Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0 + PIPE_INTERVAL * i as f32, -PIPE_GAP + pipe_offset),
-                Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+                Vec2::new(0.0, pipe_offset - PIPE_GAP - PIPE_HEIGHT),
+                Vec2::new(0.0, PIPE_HEIGHT),
             )),
             Intersects(false),
             Anchor::TOP_CENTER,
@@ -375,8 +385,8 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
             PipeTop,
             Obstacle,
             CurrentVolume::Aabb(Aabb2d::new(
-                Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0 + PIPE_INTERVAL * i as f32, PIPE_GAP + pipe_offset),
-                Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+                Vec2::new(0.0, pipe_offset + PIPE_GAP + PIPE_HEIGHT),
+                Vec2::new(0.0, PIPE_HEIGHT),
             )),
             Intersects(false),
             Anchor::BOTTOM_CENTER,
@@ -404,8 +414,8 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         PipeBottom,
         Obstacle,
         CurrentVolume::Aabb(Aabb2d::new(
-            Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0, -PIPE_GAP + pipe_offset),
-            Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+            Vec2::new(0.0, pipe_offset - PIPE_GAP - PIPE_HEIGHT),
+            Vec2::new(0.0, PIPE_HEIGHT),
         )),
         Intersects(false),
         Anchor::TOP_CENTER,
@@ -427,8 +437,8 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
         PipeTop,
         Obstacle,
         CurrentVolume::Aabb(Aabb2d::new(
-            Vec2::new((SCREEN_WIDTH + PIPE_WIDTH) / 2.0, PIPE_GAP + pipe_offset),
-            Vec2::new(PIPE_WIDTH / 2.0, PIPE_HEIGHT / 2.0),
+            Vec2::new(0.0, pipe_offset + PIPE_GAP + PIPE_HEIGHT),
+            Vec2::new(0.0, PIPE_HEIGHT),
         )),
         Intersects(false),
         Anchor::BOTTOM_CENTER,
