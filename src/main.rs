@@ -19,7 +19,9 @@ const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_RADIUS: f32 = 15.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
-const INVINCIBLE: bool = true; // toggle player invincibility
+const INVINCIBLE: bool = false; // toggle player invincibility
+
+static mut DEAD: bool = false;
 
 fn main() {
     App::new()
@@ -205,7 +207,7 @@ fn player_jump(
     mut commands: Commands,
     mut query: Query<&mut Velocity, With<Player>>,
 ) {
-    if keyboard.just_pressed(KeyCode::Space) {
+    if keyboard.just_pressed(KeyCode::Space) && !unsafe { DEAD } {
         for mut velocity in &mut query {
             velocity.y = JUMP_STRENGTH;
         }
@@ -488,8 +490,11 @@ fn check_for_collisions(
 
         if hit && !INVINCIBLE {
             // println!("HIT {:?}", circle.center);
-            let audio = asset_server.load("sfx_die.ogg");
-            commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
+            if !unsafe { DEAD } {
+                let audio = asset_server.load("sfx_die.ogg");
+                commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
+                unsafe { DEAD = true };
+            }
         }
     }
 }
