@@ -19,6 +19,7 @@ const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_RADIUS: f32 = 15.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
+const INVINCIBLE: bool = true; // toggle player invincibility
 
 fn main() {
     App::new()
@@ -460,6 +461,8 @@ fn check_for_collisions(
     mut gizmos: Gizmos,
     mut volumes: Query<(&CurrentVolume, &mut Intersects)>,
     players: Query<&Transform, With<Player>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
 ) {
     let mut circle = BoundingCircle::new(Vec2::ZERO, 0.0);
     for player_transform in &players {
@@ -483,8 +486,10 @@ fn check_for_collisions(
 
         **intersects = hit;
 
-        if hit {
-            println!("HIT {:?}", circle.center);
+        if hit && !INVINCIBLE {
+            // println!("HIT {:?}", circle.center);
+            let audio = asset_server.load("sfx_die.ogg");
+            commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
         }
     }
 }
