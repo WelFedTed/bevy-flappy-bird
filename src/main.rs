@@ -11,13 +11,13 @@ const GRAVITY: f32 = -1000.0;
 const JUMP_STRENGTH: f32 = 350.0;
 const MAX_FALL_SPEED: f32 = -400.0;
 const SCROLL_SPEED: f32 = 100.0;
-const PIPE_GAP: f32 = 50.0; // distance between pipes vertically for bird to pass through
+const PIPE_GAP: f32 = 55.0; // distance between pipes vertically for bird to pass through
 const PIPE_INTERVAL: f32 = 175.0; // distance between pipe pairs horizontally
 const GROUND_WIDTH: f32 = 336.0;
 const GROUND_HEIGHT: f32 = 112.0;
 const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
-const PLAYER_RADIUS: f32 = 15.0; // radius of the player's collision circle
+const PLAYER_RADIUS: f32 = 10.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
 const INVINCIBLE: bool = false; // toggle player invincibility
 
@@ -289,7 +289,7 @@ fn spawn_next_ground(commands: &mut Commands, atlas: &Res<Atlas>) {
             },
         ),
         Transform::from_xyz(
-            SCREEN_WIDTH / 2.0 + GROUND_WIDTH / 2.0 + (GROUND_WIDTH - SCREEN_WIDTH) / 2.0,
+            SCREEN_WIDTH / 2.0 + GROUND_WIDTH / 2.0,
             -SCREEN_HEIGHT / 2.0,
             2.0,
         ),
