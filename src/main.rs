@@ -24,6 +24,10 @@ const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after co
 const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collision
 
 static mut DEAD: bool = false;
+// static mut SCORE: u32 = 0;
+
+#[derive(Resource)]
+struct Score(u32);
 
 fn main() {
     App::new()
@@ -42,6 +46,7 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
+        .insert_resource(Score(0))
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))
         .add_systems(Startup, spawn_player.after(load_atlas))
@@ -58,7 +63,13 @@ fn main() {
         .add_systems(PostUpdate, render_volumes)
         .add_systems(Update, play_die_sound_after_delay)
         .add_systems(Update, update_screen_flash)
+        .add_systems(Update, update)
         .run();
+}
+
+fn update(mut score: ResMut<Score>) {
+    println!("Score: {}", score.0);
+    score.0 += 1;
 }
 
 #[derive(Resource)]
