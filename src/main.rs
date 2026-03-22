@@ -20,6 +20,7 @@ const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_RADIUS: f32 = 10.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
 const INVINCIBLE: bool = false; // toggle player invincibility
+const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after collision
 
 static mut DEAD: bool = false;
 
@@ -54,6 +55,7 @@ fn main() {
         .add_systems(Update, despawn_offscreen_entities)
         .add_systems(Update, check_for_collisions)
         .add_systems(PostUpdate, render_volumes)
+        .add_systems(Update, play_die_sound_after_delay)
         .run();
 }
 
@@ -260,20 +262,22 @@ fn move_obstacles(
         With<Obstacle>,
     >,
 ) {
-    for (mut transform, mut volume, maybe_ground, maybe_pipe) in &mut obstacles {
-        transform.translation.x -= SCROLL_SPEED * time.delta_secs();
-        match &mut *volume {
-            CurrentVolume::Aabb(aabb) => {
-                if let Some(_ground) = maybe_ground {
-                    aabb.min.x = transform.translation.x - GROUND_WIDTH / 2.0;
-                    aabb.max.x = transform.translation.x + GROUND_WIDTH / 2.0;
-                } else if let Some(_pipe) = maybe_pipe {
-                    aabb.min.x = transform.translation.x - PIPE_WIDTH / 2.0;
-                    aabb.max.x = transform.translation.x + PIPE_WIDTH / 2.0;
-                }
-            } // CurrentVolume::Circle(circle) => {
-              //     circle.center = vec2(transform.translation.x, transform.translation.y);
-              // }
+    if !unsafe { DEAD} {
+        for (mut transform, mut volume, maybe_ground, maybe_pipe) in &mut obstacles {
+            transform.translation.x -= SCROLL_SPEED * time.delta_secs();
+            match &mut *volume {
+                CurrentVolume::Aabb(aabb) => {
+                    if let Some(_ground) = maybe_ground {
+                        aabb.min.x = transform.translation.x - GROUND_WIDTH / 2.0;
+                        aabb.max.x = transform.translation.x + GROUND_WIDTH / 2.0;
+                    } else if let Some(_pipe) = maybe_pipe {
+                        aabb.min.x = transform.translation.x - PIPE_WIDTH / 2.0;
+                        aabb.max.x = transform.translation.x + PIPE_WIDTH / 2.0;
+                    }
+                } // CurrentVolume::Circle(circle) => {
+                  //     circle.center = vec2(transform.translation.x, transform.translation.y);
+                  // }
+            }
         }
     }
 }
@@ -491,10 +495,37 @@ fn check_for_collisions(
         if hit && !INVINCIBLE {
             // println!("HIT {:?}", circle.center);
             if !unsafe { DEAD } {
-                let audio = asset_server.load("sfx_die.ogg");
+                let audio = asset_server.load("sfx_hit.ogg");
                 commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
+                // wait 1 second before playing the die sound
+                commands.spawn(PlaySoundAfterDelay(Timer::from_seconds(
+                    DIE_SOUND_DELAY,
+                    TimerMode::Once,
+                )));
                 unsafe { DEAD = true };
             }
+        }
+    }
+}
+
+#[derive(Component)]
+struct PlaySoundAfterDelay(Timer);
+
+fn play_die_sound_after_delay(
+    mut commands: Commands,
+    time: Res<Time>,
+    asset_server: Res<AssetServer>,
+    mut query: Query<(Entity, &mut PlaySoundAfterDelay)>,
+) {
+    for (entity, mut delay) in &mut query {
+        delay.0.tick(time.delta());
+
+        if delay.0.is_finished() {
+            let audio = asset_server.load("sfx_die.ogg");
+            commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
+
+            // remove the timer entity
+            commands.entity(entity).despawn();
         }
     }
 }
