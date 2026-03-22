@@ -374,7 +374,7 @@ fn mark_passed_pipes(
     let player_x = player_query.single().unwrap().translation.x;
 
     for (entity, transform) in &mut query {
-        if transform.translation.x < player_x {
+        if transform.translation.x < player_x + PIPE_WIDTH / 4.0 {
             commands.entity(entity).insert(Passed);
             let audio = asset_server.load("sfx_point.ogg");
             commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
