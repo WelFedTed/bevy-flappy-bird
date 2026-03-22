@@ -19,7 +19,7 @@ const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_COLLIDER_RADIUS: f32 = 10.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
-const INVINCIBLE: bool = false; // toggle player invincibility
+const INVINCIBLE: bool = true; // toggle player invincibility
 const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after collision
 const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collision
 const SCORE_HEIGHT: f32 = 20.0;
@@ -47,13 +47,12 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
-        .insert_resource(Score(0))
+        .insert_resource(Score(0)) // start with score = 0
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))
         .add_systems(Startup, spawn_player.after(load_atlas))
         .add_systems(Startup, spawn_ground.after(load_atlas))
         .add_systems(Startup, spawn_pipes.after(load_atlas))
-        .add_systems(Startup, spawn_score.after(load_atlas))
         .add_systems(Update, animate_sprite)
         .add_systems(Update, apply_gravity)
         .add_systems(Update, player_movement)
@@ -67,7 +66,7 @@ fn main() {
         .add_systems(Update, update_screen_flash)
         .add_systems(Update, mark_passed_pipes)
         .add_systems(Update, check_ground_collision)
-        .add_systems(Update, update_score)
+        .add_systems(Update, update_score_text)
         .run();
 }
 
@@ -137,10 +136,46 @@ fn spawn_sprite(commands: &mut Commands, atlas: &Atlas, name: &str, pos: Vec3) {
     ));
 }
 
-fn setup(mut commands: Commands, atlas: Res<Atlas>) {
+fn setup(
+    mut commands: Commands,
+    atlas: Res<Atlas>,
+    asset_server: Res<AssetServer>,
+    score: Res<Score>,
+) {
     commands.spawn(Camera2d);
 
     spawn_sprite(&mut commands, &atlas, "bg_day", Vec3::new(0.0, 0.0, 0.0));
+
+    commands.spawn((
+        Text::new(format!("{}", score.0)),
+        TextFont {
+            font: asset_server.load("flappy-font.ttf"),
+            font_size: 32.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        TextLayout::new_with_justify(Justify::Center),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(SCORE_HEIGHT),
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        ScoreText,
+    ));
+}
+
+fn update_score_text(score: Res<Score>, mut query: Query<&mut Text, With<ScoreText>>) {
+    if !score.is_changed() {
+        return;
+    }
+
+    let Ok(mut text) = query.single_mut() else {
+        return;
+    };
+
+    **text = format!("{}", score.0);
 }
 
 #[derive(Component)]
@@ -385,67 +420,8 @@ fn mark_passed_pipes(
     }
 }
 
-fn spawn_score(mut commands: Commands, score: Res<Score>, atlas: Res<Atlas>) {
-    let frames = vec![
-        atlas.map["number_score_00"],
-        atlas.map["number_score_01"],
-        atlas.map["number_score_02"],
-        atlas.map["number_score_03"],
-        atlas.map["number_score_04"],
-        atlas.map["number_score_05"],
-        atlas.map["number_score_06"],
-        atlas.map["number_score_07"],
-        atlas.map["number_score_08"],
-        atlas.map["number_score_09"],
-    ];
-
-    commands.spawn((
-        Sprite::from_atlas_image(
-            atlas.texture.clone(),
-            TextureAtlas {
-                layout: atlas.layout.clone(),
-                index: frames[score.0 as usize],
-            },
-        ),
-        Transform::from_xyz(0.0, SCREEN_HEIGHT / 2.0 - SCORE_HEIGHT - 5.0, 999.0),
-        Anchor::CENTER,
-        ScoreDisplay,
-    ));
-}
-
-fn update_score(
-    score: Res<Score>,
-    atlas: Res<Atlas>,
-    mut query: Query<&mut Sprite, With<ScoreDisplay>>,
-) {
-    if !score.is_changed() {
-        return;
-    }
-
-    println!("Score: {}", score.0);
-
-    let frames = [
-        atlas.map["number_score_00"],
-        atlas.map["number_score_01"],
-        atlas.map["number_score_02"],
-        atlas.map["number_score_03"],
-        atlas.map["number_score_04"],
-        atlas.map["number_score_05"],
-        atlas.map["number_score_06"],
-        atlas.map["number_score_07"],
-        atlas.map["number_score_08"],
-        atlas.map["number_score_09"],
-    ];
-
-    let mut sprite = query.single_mut().expect("Expected exactly one ScoreDisplay");
-
-    if let Some(texture_atlas) = &mut sprite.texture_atlas {
-        texture_atlas.index = frames[score.0 as usize];
-    }
-}
-
 #[derive(Component)]
-struct ScoreDisplay;
+struct ScoreText;
 
 fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
     for i in 0..2 {
@@ -598,7 +574,6 @@ fn check_for_collisions(
                 trigger_screen_flash(&mut commands);
                 let audio = asset_server.load("sfx_hit.ogg");
                 commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
-                // wait 1 second before playing the die sound
                 commands.spawn(PlaySoundAfterDelay(Timer::from_seconds(
                     DIE_SOUND_DELAY,
                     TimerMode::Once,
@@ -688,7 +663,7 @@ fn check_ground_collision(
     grounds: Query<&Intersects, With<Ground>>,
     mut players: Query<&mut Transform, With<Player>>,
 ) {
-    if !unsafe { GRAVITY_ON } {
+    if !unsafe { GRAVITY_ON } || INVINCIBLE {
         return;
     }
     for intersects in &grounds {
