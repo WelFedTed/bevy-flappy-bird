@@ -24,7 +24,7 @@ const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after co
 const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collision
 
 static mut DEAD: bool = false;
-// static mut SCORE: u32 = 0;
+static mut GRAVITY_ON: bool = true;
 
 #[derive(Resource)]
 struct Score(u32);
@@ -64,12 +64,8 @@ fn main() {
         .add_systems(Update, play_die_sound_after_delay)
         .add_systems(Update, update_screen_flash)
         .add_systems(Update, mark_passed_pipes)
-        .add_systems(Update, update)
+        .add_systems(Update, check_ground_collision)
         .run();
-}
-
-fn update(score: ResMut<Score>) {
-    println!("Score: {}", score.0);
 }
 
 #[derive(Resource)]
@@ -204,6 +200,9 @@ struct Velocity {
 }
 
 fn player_movement(time: Res<Time>, mut query: Query<(&Velocity, &mut Transform), With<Player>>) {
+    if unsafe { !GRAVITY_ON } {
+        return;
+    }
     for (velocity, mut transform) in &mut query {
         transform.translation.y += velocity.y * time.delta_secs();
     }
@@ -379,6 +378,7 @@ fn mark_passed_pipes(
             let audio = asset_server.load("sfx_point.ogg");
             commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
             score.0 += 1;
+            println!("Score: {}", score.0);
         }
     }
 }
@@ -616,6 +616,25 @@ fn update_screen_flash(
 
         if flash.timer.is_finished() {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn check_ground_collision(
+    grounds: Query<&Intersects, With<Ground>>,
+    mut players: Query<&mut Transform, With<Player>>,
+) {
+    if !unsafe { GRAVITY_ON } {
+        return;
+    }
+    for intersects in &grounds {
+        if **intersects {
+            unsafe {
+                GRAVITY_ON = false;
+            }
+            for mut player in &mut players {
+                player.translation.y += PLAYER_COLLIDER_RADIUS;
+            }
         }
     }
 }
