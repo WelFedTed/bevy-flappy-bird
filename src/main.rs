@@ -63,13 +63,13 @@ fn main() {
         .add_systems(PostUpdate, render_volumes)
         .add_systems(Update, play_die_sound_after_delay)
         .add_systems(Update, update_screen_flash)
+        .add_systems(Update, mark_passed_pipes)
         .add_systems(Update, update)
         .run();
 }
 
-fn update(mut score: ResMut<Score>) {
+fn update(score: ResMut<Score>) {
     println!("Score: {}", score.0);
-    score.0 += 1;
 }
 
 #[derive(Resource)]
@@ -361,6 +361,28 @@ struct PipeTop;
 #[derive(Component)]
 struct PipeBottom;
 
+#[derive(Component)]
+struct Passed;
+
+fn mark_passed_pipes(
+    mut commands: Commands,
+    mut query: Query<(Entity, &Transform), (With<PipeTop>, Without<Passed>)>,
+    player_query: Query<&Transform, With<Player>>,
+    mut score: ResMut<Score>,
+    asset_server: Res<AssetServer>,
+) {
+    let player_x = player_query.single().unwrap().translation.x;
+
+    for (entity, transform) in &mut query {
+        if transform.translation.x < player_x {
+            commands.entity(entity).insert(Passed);
+            let audio = asset_server.load("sfx_point.ogg");
+            commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
+            score.0 += 1;
+        }
+    }
+}
+
 fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
     for i in 0..2 {
         let pipe_offset: f32 = rand::random_range(-75.0..185.0);
@@ -380,6 +402,7 @@ fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
             Pipe,
             PipeBottom,
             Obstacle,
+            Passed,
             CurrentVolume::Aabb(Aabb2d::new(
                 Vec2::new(0.0, pipe_offset - PIPE_GAP - PIPE_HEIGHT),
                 Vec2::new(0.0, PIPE_HEIGHT),
