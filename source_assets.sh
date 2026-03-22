@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 set -u
 
-# Sources
-# APK source:
-#   https://archive.org/details/flappy-bird-v-1.2_202107
-#   -> https://archive.org/download/flappy-bird-v-1.2_202107/Flappy%20Bird%201.3.apk
-#
-# ZIP source:
-#   https://github.com/paulkr/Flappy-Bird
-#   -> https://github.com/paulkr/Flappy-Bird/archive/refs/heads/master.zip
+SOURCES=(
+    "https://archive.org/download/flappy-bird-v-1.2_202107/Flappy%20Bird%201.3.apk"
+    "https://github.com/paulkr/Flappy-Bird/archive/refs/heads/master.zip"
+)
+
+curl -L "${SOURCES[0]}" -o "com.dotgears.flappybird-1.3-4-minAPI8.apk"
+curl -L "${SOURCES[1]}" -o "paulkr_Flappy-Bird.zip"
 
 APK="com.dotgears.flappybird-1.3-4-minAPI8.apk"
 APK_EXPECTED_MD5="BF978C69C8E594E6FE301B677E69ACBC"
@@ -40,6 +39,7 @@ OVERWRITE_ALL=false
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Error: required command '$1' not found."
+    echo "Aborted"
     exit 1
   fi
 }
@@ -53,6 +53,7 @@ calc_md5() {
     md5 -q "$file" | tr '[:lower:]' '[:upper:]'
   else
     echo "Error: No MD5 utility found (md5sum or md5)."
+    echo "Aborted"
     exit 1
   fi
 }
@@ -127,6 +128,7 @@ extract_group() {
 
   if [[ ! -f "$archive" ]]; then
     echo "Error: archive not found: $archive"
+    echo "Aborted"
     exit 1
   fi
 
@@ -140,12 +142,14 @@ require_command unzip
 # Check APK exists
 if [[ ! -f "$APK" ]]; then
   echo "Error: $APK not found in current directory."
+  echo "Aborted"
   exit 1
 fi
 
 # Check ZIP exists
 if [[ ! -f "$ZIP" ]]; then
   echo "Error: $ZIP not found in current directory."
+  echo "Aborted"
   exit 1
 fi
 
