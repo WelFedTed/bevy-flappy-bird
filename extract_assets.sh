@@ -12,6 +12,7 @@ FILES=(
 "assets/sounds/sfx_swooshing.ogg"
 "assets/sounds/sfx_wing.ogg"
 "res/drawable/splash.png"
+"res/drawable-xxxhdpi/ic_launcher.png"
 "res/raw/atlas.txt"
 )
 
