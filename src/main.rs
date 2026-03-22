@@ -21,6 +21,7 @@ const PLAYER_RADIUS: f32 = 10.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
 const INVINCIBLE: bool = false; // toggle player invincibility
 const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after collision
+const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collision
 
 static mut DEAD: bool = false;
 
@@ -56,6 +57,7 @@ fn main() {
         .add_systems(Update, check_for_collisions)
         .add_systems(PostUpdate, render_volumes)
         .add_systems(Update, play_die_sound_after_delay)
+        .add_systems(Update, update_screen_flash)
         .run();
 }
 
@@ -262,7 +264,7 @@ fn move_obstacles(
         With<Obstacle>,
     >,
 ) {
-    if !unsafe { DEAD} {
+    if !unsafe { DEAD } {
         for (mut transform, mut volume, maybe_ground, maybe_pipe) in &mut obstacles {
             transform.translation.x -= SCROLL_SPEED * time.delta_secs();
             match &mut *volume {
@@ -495,6 +497,7 @@ fn check_for_collisions(
         if hit && !INVINCIBLE {
             // println!("HIT {:?}", circle.center);
             if !unsafe { DEAD } {
+                trigger_screen_flash(&mut commands);
                 let audio = asset_server.load("sfx_hit.ogg");
                 commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
                 // wait 1 second before playing the die sound
@@ -541,6 +544,44 @@ fn render_volumes(mut gizmos: Gizmos, query: Query<(&CurrentVolume, &Intersects)
                   //     gizmos.circle_2d(c.center(), c.radius(), color);
                   // }
             }
+        }
+    }
+}
+
+#[derive(Component)]
+struct ScreenFlash {
+    timer: Timer,
+}
+
+fn trigger_screen_flash(commands: &mut Commands) {
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        BackgroundColor(Color::WHITE),
+        // ZIndex::Global(999), // ensure it's on top
+        ScreenFlash {
+            timer: Timer::from_seconds(FLASH_DURATION, TimerMode::Once), // total flash duration
+        },
+    ));
+}
+
+fn update_screen_flash(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut ScreenFlash, &mut BackgroundColor)>,
+) {
+    for (entity, mut flash, mut color) in &mut query {
+        flash.timer.tick(time.delta());
+
+        let remaining = 1.0 - flash.timer.fraction();
+        color.0.set_alpha(remaining); // fade alpha
+
+        if flash.timer.is_finished() {
+            commands.entity(entity).despawn();
         }
     }
 }
