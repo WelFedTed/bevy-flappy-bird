@@ -17,7 +17,7 @@ const GROUND_WIDTH: f32 = 336.0;
 const GROUND_HEIGHT: f32 = 112.0;
 const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
-const PLAYER_RADIUS: f32 = 10.0; // radius of the player's collision circle
+const PLAYER_COLLIDER_RADIUS: f32 = 10.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
 const INVINCIBLE: bool = false; // toggle player invincibility
 const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after collision
@@ -165,7 +165,7 @@ fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
         },
         Player,
         Velocity { y: 0.0 },
-        // CurrentVolume::Circle(BoundingCircle::new(Vec2::new(-50.0, 0.0), PLAYER_RADIUS)),
+        // CurrentVolume::Circle(BoundingCircle::new(Vec2::new(-50.0, 0.0), PLAYER_COLLIDER_RADIUS)),
         // Intersects(false),
     ));
 }
@@ -479,7 +479,7 @@ fn check_for_collisions(
                 player_transform.translation.x,
                 player_transform.translation.y,
             ),
-            PLAYER_RADIUS,
+            PLAYER_COLLIDER_RADIUS,
         )
     }
     if DRAW_DEBUG {
