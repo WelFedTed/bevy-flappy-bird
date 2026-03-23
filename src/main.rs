@@ -19,13 +19,19 @@ const PIPE_WIDTH: f32 = 52.0;
 const PIPE_HEIGHT: f32 = 320.0;
 const PLAYER_COLLIDER_RADIUS: f32 = 10.0; // radius of the player's collision circle
 const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision detection
-const INVINCIBLE: bool = true; // toggle player invincibility
+const INVINCIBLE: bool = false; // toggle player invincibility
 const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after collision
 const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collision
 const SCORE_HEIGHT: f32 = 20.0;
 
-static mut DEAD: bool = false;
-static mut GRAVITY_ON: bool = true;
+// static mut DEAD: bool = false;
+// static mut GRAVITY_ON: bool = true;
+
+#[derive(Resource)]
+struct Dead(bool);
+
+#[derive(Resource)]
+struct GravityOn(bool);
 
 #[derive(Resource)]
 struct Score(u32);
@@ -47,7 +53,9 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
-        .insert_resource(Score(0)) // start with score = 0
+        .insert_resource(Dead(false))
+        .insert_resource(GravityOn(true))
+        .insert_resource(Score(0)) // start with score = 0ad
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))
         .add_systems(Startup, spawn_player.after(load_atlas))
@@ -237,8 +245,8 @@ struct Velocity {
     y: f32,
 }
 
-fn player_movement(time: Res<Time>, mut query: Query<(&Velocity, &mut Transform), With<Player>>) {
-    if unsafe { !GRAVITY_ON } {
+fn player_movement(time: Res<Time>, gravity_on: Res<GravityOn>, mut query: Query<(&Velocity, &mut Transform), With<Player>>) {
+    if !gravity_on.0 {
         return;
     }
     for (velocity, mut transform) in &mut query {
@@ -246,7 +254,14 @@ fn player_movement(time: Res<Time>, mut query: Query<(&Velocity, &mut Transform)
     }
 }
 
-fn apply_gravity(time: Res<Time>, mut query: Query<&mut Velocity, With<Player>>) {
+fn apply_gravity(
+    time: Res<Time>,
+    gravity_on: Res<GravityOn>,
+    mut query: Query<&mut Velocity, With<Player>>,
+) {
+    if !gravity_on.0 {
+        return;
+    }
     for mut velocity in &mut query {
         velocity.y += GRAVITY * time.delta_secs();
         velocity.y = velocity.y.max(MAX_FALL_SPEED);
@@ -254,12 +269,13 @@ fn apply_gravity(time: Res<Time>, mut query: Query<&mut Velocity, With<Player>>)
 }
 
 fn player_jump(
+    dead: Res<Dead>,
     keyboard: Res<ButtonInput<KeyCode>>,
     asset_server: Res<AssetServer>,
     mut commands: Commands,
     mut query: Query<&mut Velocity, With<Player>>,
 ) {
-    if keyboard.just_pressed(KeyCode::Space) && !unsafe { DEAD } {
+    if keyboard.just_pressed(KeyCode::Space) && !dead.0 {
         for mut velocity in &mut query {
             velocity.y = JUMP_STRENGTH;
         }
@@ -302,6 +318,7 @@ fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
 
 fn move_obstacles(
     time: Res<Time>,
+    dead: Res<Dead>,
     mut obstacles: Query<
         (
             &mut Transform,
@@ -312,7 +329,7 @@ fn move_obstacles(
         With<Obstacle>,
     >,
 ) {
-    if !unsafe { DEAD } {
+    if !dead.0 {
         for (mut transform, mut volume, maybe_ground, maybe_pipe) in &mut obstacles {
             transform.translation.x -= SCROLL_SPEED * time.delta_secs();
             match &mut *volume {
@@ -540,6 +557,7 @@ enum CurrentVolume {
 struct Intersects(pub bool);
 
 fn check_for_collisions(
+    mut dead: ResMut<Dead>,
     mut gizmos: Gizmos,
     mut volumes: Query<(&CurrentVolume, &mut Intersects)>,
     players: Query<&Transform, With<Player>>,
@@ -570,7 +588,7 @@ fn check_for_collisions(
 
         if hit && !INVINCIBLE {
             // println!("HIT {:?}", circle.center);
-            if !unsafe { DEAD } {
+            if !dead.0 {
                 trigger_screen_flash(&mut commands);
                 let audio = asset_server.load("sfx_hit.ogg");
                 commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
@@ -578,7 +596,7 @@ fn check_for_collisions(
                     DIE_SOUND_DELAY,
                     TimerMode::Once,
                 )));
-                unsafe { DEAD = true };
+                dead.0 = true;
             }
         }
     }
@@ -635,7 +653,6 @@ fn trigger_screen_flash(commands: &mut Commands) {
             ..default()
         },
         BackgroundColor(Color::WHITE),
-        // ZIndex::Global(999), // ensure it's on top
         ScreenFlash {
             timer: Timer::from_seconds(FLASH_DURATION, TimerMode::Once), // total flash duration
         },
@@ -660,17 +677,17 @@ fn update_screen_flash(
 }
 
 fn check_ground_collision(
+    mut gravity_on: ResMut<GravityOn>,
     grounds: Query<&Intersects, With<Ground>>,
     mut players: Query<&mut Transform, With<Player>>,
 ) {
-    if !unsafe { GRAVITY_ON } || INVINCIBLE {
+    if !gravity_on.0 || INVINCIBLE {
         return;
     }
     for intersects in &grounds {
         if **intersects {
-            unsafe {
-                GRAVITY_ON = false;
-            }
+            // println!("GROUND COLLISION");
+            gravity_on.0 = false;
             for mut player in &mut players {
                 player.translation.y += PLAYER_COLLIDER_RADIUS;
             }
