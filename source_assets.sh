@@ -1,18 +1,29 @@
 #!/usr/bin/env bash
 set -u
 
+TEMP_DIR="./temp"
+FORCE_DOWNLOAD=false
+
+# Parse args
+for arg in "$@"; do
+  case "$arg" in
+    --force-download)
+      FORCE_DOWNLOAD=true
+      ;;
+  esac
+done
+
 SOURCES=(
     "https://archive.org/download/flappy-bird-v-1.2_202107/Flappy%20Bird%201.3.apk"
     "https://github.com/paulkr/Flappy-Bird/archive/refs/heads/master.zip"
 )
 
-curl -L "${SOURCES[0]}" -o "com.dotgears.flappybird-1.3-4-minAPI8.apk"
-curl -L "${SOURCES[1]}" -o "paulkr_Flappy-Bird.zip"
-
 APK="com.dotgears.flappybird-1.3-4-minAPI8.apk"
+APK_PATH="$TEMP_DIR/$APK"
 APK_EXPECTED_MD5="BF978C69C8E594E6FE301B677E69ACBC"
 
 ZIP="paulkr_Flappy-Bird.zip"
+ZIP_PATH="$TEMP_DIR/$ZIP"
 ZIP_EXPECTED_MD5="19E22337C7DAFA9DD2B6522119ACDE1C"
 
 DEST_DIR="./assets"
@@ -25,7 +36,6 @@ FILES_SOURCE1=(
   "assets/sounds/sfx_swooshing.ogg"
   "assets/sounds/sfx_wing.ogg"
   "res/drawable/splash.png"
-  # "res/drawable-xxxhdpi/ic_launcher.png"
   "res/raw/atlas.txt"
 )
 
@@ -78,22 +88,37 @@ verify_md5() {
   fi
 }
 
+download_if_needed() {
+  local url="$1"
+  local path="$2"
+  local expected_md5="$3"
+
+  if [[ -f "$path" && "$FORCE_DOWNLOAD" = false ]]; then
+    echo "Found existing file: $path"
+    local actual_md5
+    actual_md5="$(calc_md5 "$path")"
+
+    if [[ "$actual_md5" == "$expected_md5" ]]; then
+      echo "MD5 valid, skipping download."
+      return 0
+    else
+      echo "MD5 mismatch, re-downloading..."
+    fi
+  fi
+
+  echo "Downloading $(basename "$path")..."
+  curl -L "$url" -o "$path"
+}
+
 confirm_overwrite() {
   local dest_path="$1"
 
   if [[ -f "$dest_path" && "$OVERWRITE_ALL" = false ]]; then
     read -r -p "$dest_path exists. Overwrite? ([Y] Yes / [A] Yes to All / [N] No): " choice
     case "$choice" in
-      y|Y)
-        return 0
-        ;;
-      a|A)
-        OVERWRITE_ALL=true
-        return 0
-        ;;
-      *)
-        return 1
-        ;;
+      y|Y) return 0 ;;
+      a|A) OVERWRITE_ALL=true; return 0 ;;
+      *) return 1 ;;
     esac
   fi
 
@@ -138,33 +163,24 @@ extract_group() {
 }
 
 require_command unzip
+require_command curl
 
-# Check APK exists
-if [[ ! -f "$APK" ]]; then
-  echo "Error: $APK not found in current directory."
-  echo "Aborted"
-  exit 1
-fi
+mkdir -p "$TEMP_DIR"
 
-# Check ZIP exists
-if [[ ! -f "$ZIP" ]]; then
-  echo "Error: $ZIP not found in current directory."
-  echo "Aborted"
-  exit 1
-fi
+# Download with skip logic
+download_if_needed "${SOURCES[0]}" "$APK_PATH" "$APK_EXPECTED_MD5"
+download_if_needed "${SOURCES[1]}" "$ZIP_PATH" "$ZIP_EXPECTED_MD5"
 
-# Verify APK MD5
-verify_md5 "$APK" "$APK_EXPECTED_MD5"
-
-# Verify ZIP MD5
-verify_md5 "$ZIP" "$ZIP_EXPECTED_MD5"
+# Verify after download
+verify_md5 "$APK_PATH" "$APK_EXPECTED_MD5"
+verify_md5 "$ZIP_PATH" "$ZIP_EXPECTED_MD5"
 
 mkdir -p "$DEST_DIR"
 
 echo "Extracting files from APK..."
-extract_group "$APK" "${FILES_SOURCE1[@]}"
+extract_group "$APK_PATH" "${FILES_SOURCE1[@]}"
 
 echo "Extracting files from ZIP..."
-extract_group "$ZIP" "${FILES_SOURCE2[@]}"
+extract_group "$ZIP_PATH" "${FILES_SOURCE2[@]}"
 
 echo "Done."
