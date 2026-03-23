@@ -29,6 +29,7 @@ FILES_SOURCE1=(
   "assets/sounds/sfx_swooshing.ogg"
   "assets/sounds/sfx_wing.ogg"
   "res/drawable/splash.png"
+  # "res/drawable-xxxhdpi/ic_launcher.png"
   "res/raw/atlas.txt"
 )
 
@@ -57,6 +58,9 @@ abort() {
 
 usage() {
   cat <<EOF
+Sources Download Script
+This script downloads and extracts the source assets required to build the Bevy Flappy Bird game.
+
 Usage: $0 [options]
 
 Options:
@@ -83,7 +87,7 @@ for arg in "$@"; do
       exit 0
       ;;
     *)
-      abort "[ERROR] Unknown argument: $arg"
+      abort "Unknown argument: $arg"
       ;;
   esac
 done
