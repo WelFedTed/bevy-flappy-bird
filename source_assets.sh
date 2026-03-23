@@ -2,20 +2,15 @@
 set -u
 
 TEMP_DIR="./temp"
-FORCE_DOWNLOAD=false
+DEST_DIR="./assets"
 
-# Parse args
-for arg in "$@"; do
-  case "$arg" in
-    --force-download)
-      FORCE_DOWNLOAD=true
-      ;;
-  esac
-done
+FORCE_DOWNLOAD=false
+CLEAN=false
+OVERWRITE_ALL=false
 
 SOURCES=(
-    "https://archive.org/download/flappy-bird-v-1.2_202107/Flappy%20Bird%201.3.apk"
-    "https://github.com/paulkr/Flappy-Bird/archive/refs/heads/master.zip"
+  "https://archive.org/download/flappy-bird-v-1.2_202107/Flappy%20Bird%201.3.apk"
+  "https://github.com/paulkr/Flappy-Bird/archive/refs/heads/master.zip"
 )
 
 APK="com.dotgears.flappybird-1.3-4-minAPI8.apk"
@@ -25,8 +20,6 @@ APK_EXPECTED_MD5="BF978C69C8E594E6FE301B677E69ACBC"
 ZIP="paulkr_Flappy-Bird.zip"
 ZIP_PATH="$TEMP_DIR/$ZIP"
 ZIP_EXPECTED_MD5="19E22337C7DAFA9DD2B6522119ACDE1C"
-
-DEST_DIR="./assets"
 
 FILES_SOURCE1=(
   "assets/gfx/atlas.png"
@@ -44,13 +37,60 @@ FILES_SOURCE2=(
   "Flappy-Bird-master/lib/res/img/icon.png"
 )
 
-OVERWRITE_ALL=false
+log() {
+  printf '[INFO] %s\n' "$*"
+}
+
+warn() {
+  printf '[WARN] %s\n' "$*"
+}
+
+error() {
+  printf '[ERROR] %s\n' "$*" >&2
+}
+
+abort() {
+  error "$*"
+  echo "Aborted"
+  exit 1
+}
+
+usage() {
+  cat <<EOF
+Usage: $0 [options]
+
+Options:
+  --force-download   Re-download source archives even if valid cached copies exist
+  --clean            Delete ./temp after successful extraction
+  --overwrite        Overwrite all extracted files without prompting
+  --help             Show this help message
+EOF
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    --force-download)
+      FORCE_DOWNLOAD=true
+      ;;
+    --clean)
+      CLEAN=true
+      ;;
+    --overwrite)
+      OVERWRITE_ALL=true
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      abort "[ERROR] Unknown argument: $arg"
+      ;;
+  esac
+done
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
-    echo "Error: required command '$1' not found."
-    echo "Aborted"
-    exit 1
+    abort "required command '$1' not found."
   fi
 }
 
@@ -62,9 +102,7 @@ calc_md5() {
   elif command -v md5 >/dev/null 2>&1; then
     md5 -q "$file" | tr '[:lower:]' '[:upper:]'
   else
-    echo "Error: No MD5 utility found (md5sum or md5)."
-    echo "Aborted"
-    exit 1
+    abort "No MD5 utility found (md5sum or md5)."
   fi
 }
 
@@ -77,37 +115,40 @@ verify_md5() {
 
   if [[ "$actual_md5" != "$expected_md5" ]]; then
     echo "File: $file"
-    echo "Warning: MD5 hash mismatch."
+    warn "MD5 hash mismatch."
     echo "Expected: $expected_md5"
     echo "Actual:   $actual_md5"
     read -r -p "Proceed anyway? (Y/N): " choice
     case "$choice" in
       y|Y) ;;
-      *) echo "Aborted."; exit 1 ;;
+      *) abort "User chose not to proceed." ;;
     esac
   fi
 }
 
-download_if_needed() {
+download_file() {
   local url="$1"
   local path="$2"
   local expected_md5="$3"
 
   if [[ -f "$path" && "$FORCE_DOWNLOAD" = false ]]; then
-    echo "Found existing file: $path"
     local actual_md5
     actual_md5="$(calc_md5 "$path")"
 
     if [[ "$actual_md5" == "$expected_md5" ]]; then
-      echo "MD5 valid, skipping download."
+      log "Using cached file: $path"
       return 0
-    else
-      echo "MD5 mismatch, re-downloading..."
     fi
+
+    warn "Cached file failed MD5, re-downloading: $path"
+    rm -f "$path"
   fi
 
-  echo "Downloading $(basename "$path")..."
-  curl -L "$url" -o "$path"
+  log "Downloading $(basename "$path")"
+  if ! curl -# -L "$url" -o "$path"; then
+    rm -f "$path"
+    return 1
+  fi
 }
 
 confirm_overwrite() {
@@ -116,9 +157,16 @@ confirm_overwrite() {
   if [[ -f "$dest_path" && "$OVERWRITE_ALL" = false ]]; then
     read -r -p "$dest_path exists. Overwrite? ([Y] Yes / [A] Yes to All / [N] No): " choice
     case "$choice" in
-      y|Y) return 0 ;;
-      a|A) OVERWRITE_ALL=true; return 0 ;;
-      *) return 1 ;;
+      y|Y)
+        return 0
+        ;;
+      a|A)
+        OVERWRITE_ALL=true
+        return 0
+        ;;
+      *)
+        return 1
+        ;;
     esac
   fi
 
@@ -134,13 +182,13 @@ extract_file() {
   dest_path="$DEST_DIR/$basename"
 
   if ! confirm_overwrite "$dest_path"; then
-    echo "Skipping $basename"
+    log "Skipping $basename"
     return 0
   fi
 
-  echo "Extracting $inner_path -> $dest_path"
+  log "Extracting $inner_path -> $dest_path"
   if ! unzip -p "$archive" "$inner_path" > "$dest_path"; then
-    echo "Failed to extract: $inner_path"
+    error "Failed to extract: $inner_path"
     rm -f "$dest_path"
     return 1
   fi
@@ -151,36 +199,48 @@ extract_group() {
   shift
   local files=("$@")
 
-  if [[ ! -f "$archive" ]]; then
-    echo "Error: archive not found: $archive"
-    echo "Aborted"
-    exit 1
-  fi
+  [[ -f "$archive" ]] || abort "archive not found: $archive"
 
+  local file
   for file in "${files[@]}"; do
     extract_file "$archive" "$file"
   done
+}
+
+cleanup_temp() {
+  if [[ "$CLEAN" = true ]]; then
+    log "Cleaning temp directory: $TEMP_DIR"
+    rm -rf "$TEMP_DIR"
+  fi
 }
 
 require_command unzip
 require_command curl
 
 mkdir -p "$TEMP_DIR"
+mkdir -p "$DEST_DIR"
 
-# Download with skip logic
-download_if_needed "${SOURCES[0]}" "$APK_PATH" "$APK_EXPECTED_MD5"
-download_if_needed "${SOURCES[1]}" "$ZIP_PATH" "$ZIP_EXPECTED_MD5"
+log "Preparing source archives"
 
-# Verify after download
+download_file "${SOURCES[0]}" "$APK_PATH" "$APK_EXPECTED_MD5" \
+  || abort "Download failed: $APK"
+
+download_file "${SOURCES[1]}" "$ZIP_PATH" "$ZIP_EXPECTED_MD5" \
+  || abort "Download failed: $ZIP"
+
+[[ -f "$APK_PATH" ]] || abort "Missing file after download: $APK_PATH"
+[[ -f "$ZIP_PATH" ]] || abort "Missing file after download: $ZIP_PATH"
+
+log "Verifying archive checksums"
 verify_md5 "$APK_PATH" "$APK_EXPECTED_MD5"
 verify_md5 "$ZIP_PATH" "$ZIP_EXPECTED_MD5"
 
-mkdir -p "$DEST_DIR"
-
-echo "Extracting files from APK..."
+log "Extracting files from APK"
 extract_group "$APK_PATH" "${FILES_SOURCE1[@]}"
 
-echo "Extracting files from ZIP..."
+log "Extracting files from ZIP"
 extract_group "$ZIP_PATH" "${FILES_SOURCE2[@]}"
 
-echo "Done."
+cleanup_temp
+
+log "Done."
