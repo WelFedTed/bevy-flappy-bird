@@ -6,7 +6,7 @@ A reimplementation of Flappy Bird using the Bevy game framework.
 
 Run `./source_assets.sh` to download .APK + .ZIP sources and extract required assets to `./assets` directory.
 
-```bash
+```
 Usage: ./source_assets.sh [options]
 
 Options:
