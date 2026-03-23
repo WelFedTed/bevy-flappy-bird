@@ -24,9 +24,6 @@ const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after co
 const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collision
 const SCORE_HEIGHT: f32 = 20.0;
 
-// static mut DEAD: bool = false;
-// static mut GRAVITY_ON: bool = true;
-
 #[derive(Resource)]
 struct Dead(bool);
 
@@ -245,7 +242,11 @@ struct Velocity {
     y: f32,
 }
 
-fn player_movement(time: Res<Time>, gravity_on: Res<GravityOn>, mut query: Query<(&Velocity, &mut Transform), With<Player>>) {
+fn player_movement(
+    time: Res<Time>,
+    gravity_on: Res<GravityOn>,
+    mut query: Query<(&Velocity, &mut Transform), With<Player>>,
+) {
     if !gravity_on.0 {
         return;
     }
