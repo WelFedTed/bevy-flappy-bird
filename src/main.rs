@@ -25,6 +25,13 @@ const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collisi
 const SCORE_HEIGHT: f32 = 20.0;
 
 #[derive(Resource)]
+struct Atlas {
+    texture: Handle<Image>,
+    layout: Handle<TextureAtlasLayout>,
+    map: HashMap<String, usize>,
+}
+
+#[derive(Resource)]
 struct Dead(bool);
 
 #[derive(Resource)]
@@ -32,6 +39,59 @@ struct GravityOn(bool);
 
 #[derive(Resource)]
 struct Score(u32);
+
+#[derive(Component)]
+struct Animation {
+    frames: Vec<usize>,
+    timer: Timer,
+    current: usize,
+}
+
+#[derive(Component)]
+struct Ground;
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Velocity {
+    y: f32,
+}
+
+#[derive(Component)]
+struct Pipe;
+
+#[derive(Component)]
+struct PipeTop;
+
+#[derive(Component)]
+struct PipeBottom;
+
+#[derive(Component)]
+struct Passed;
+
+#[derive(Component)]
+struct ScoreText;
+
+#[derive(Component)]
+struct Obstacle;
+
+#[derive(Component, Clone, Copy)]
+enum CurrentVolume {
+    // Circle(BoundingCircle),
+    Aabb(Aabb2d),
+}
+
+#[derive(Component, Deref, DerefMut)]
+struct Intersects(pub bool);
+
+#[derive(Component)]
+struct PlaySoundAfterDelay(Timer);
+
+#[derive(Component)]
+struct ScreenFlash {
+    timer: Timer,
+}
 
 fn main() {
     App::new()
@@ -73,13 +133,6 @@ fn main() {
         .add_systems(Update, check_ground_collision)
         .add_systems(Update, update_score_text)
         .run();
-}
-
-#[derive(Resource)]
-struct Atlas {
-    texture: Handle<Image>,
-    layout: Handle<TextureAtlasLayout>,
-    map: HashMap<String, usize>,
 }
 
 fn load_atlas(
@@ -183,13 +236,6 @@ fn update_score_text(score: Res<Score>, mut query: Query<&mut Text, With<ScoreTe
     **text = format!("{}", score.0);
 }
 
-#[derive(Component)]
-struct Animation {
-    frames: Vec<usize>,
-    timer: Timer,
-    current: usize,
-}
-
 fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
     let frames = vec![
         atlas.map["bird0_0"],
@@ -232,14 +278,6 @@ fn animate_sprite(time: Res<Time>, mut query: Query<(&mut Animation, &mut Sprite
             }
         }
     }
-}
-
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct Velocity {
-    y: f32,
 }
 
 fn player_movement(
@@ -291,9 +329,6 @@ fn player_rotation(query: Query<(&Velocity, &mut Transform), With<Player>>) {
         transform.rotation = Quat::from_rotation_z(angle * 1.5);
     }
 }
-
-#[derive(Component)]
-struct Ground;
 
 fn spawn_ground(mut commands: Commands, atlas: Res<Atlas>) {
     commands.spawn((
@@ -407,18 +442,6 @@ fn despawn_offscreen_entities(
     }
 }
 
-#[derive(Component)]
-struct Pipe;
-
-#[derive(Component)]
-struct PipeTop;
-
-#[derive(Component)]
-struct PipeBottom;
-
-#[derive(Component)]
-struct Passed;
-
 fn mark_passed_pipes(
     mut commands: Commands,
     mut query: Query<(Entity, &Transform), (With<PipeTop>, Without<Passed>)>,
@@ -437,9 +460,6 @@ fn mark_passed_pipes(
         }
     }
 }
-
-#[derive(Component)]
-struct ScoreText;
 
 fn spawn_pipes(mut commands: Commands, atlas: Res<Atlas>) {
     for i in 0..2 {
@@ -545,18 +565,6 @@ fn spawn_next_pipes(commands: &mut Commands, atlas: &Res<Atlas>) {
     ));
 }
 
-#[derive(Component)]
-struct Obstacle;
-
-#[derive(Component, Clone, Copy)]
-enum CurrentVolume {
-    // Circle(BoundingCircle),
-    Aabb(Aabb2d),
-}
-
-#[derive(Component, Deref, DerefMut)]
-struct Intersects(pub bool);
-
 fn check_for_collisions(
     mut dead: ResMut<Dead>,
     mut gizmos: Gizmos,
@@ -603,9 +611,6 @@ fn check_for_collisions(
     }
 }
 
-#[derive(Component)]
-struct PlaySoundAfterDelay(Timer);
-
 fn play_die_sound_after_delay(
     mut commands: Commands,
     time: Res<Time>,
@@ -638,11 +643,6 @@ fn render_volumes(mut gizmos: Gizmos, query: Query<(&CurrentVolume, &Intersects)
             }
         }
     }
-}
-
-#[derive(Component)]
-struct ScreenFlash {
-    timer: Timer,
 }
 
 fn trigger_screen_flash(commands: &mut Commands) {
