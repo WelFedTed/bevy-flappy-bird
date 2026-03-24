@@ -5,6 +5,9 @@ use bevy::sprite::Anchor;
 use bevy::window::{WindowPlugin, WindowResolution};
 use std::collections::HashMap;
 
+mod player;
+use player::PlayerPlugin;
+
 const SCREEN_WIDTH: f32 = 288.0;
 const SCREEN_HEIGHT: f32 = 512.0;
 const GRAVITY: f32 = -1000.0;
@@ -95,6 +98,7 @@ struct ScreenFlash {
 
 fn main() {
     App::new()
+        .add_plugins(PlayerPlugin)
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
@@ -112,7 +116,7 @@ fn main() {
         )
         .insert_resource(Dead(false))
         .insert_resource(GravityOn(true))
-        .insert_resource(Score(0)) // start with score = 0ad
+        .insert_resource(Score(0)) // start with score = 0
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))
         .add_systems(Startup, spawn_player.after(load_atlas))
@@ -121,8 +125,6 @@ fn main() {
         .add_systems(Update, animate_sprite)
         .add_systems(Update, apply_gravity)
         .add_systems(Update, player_movement)
-        .add_systems(Update, player_jump)
-        .add_systems(Update, player_rotation)
         .add_systems(Update, move_obstacles)
         .add_systems(Update, despawn_offscreen_entities)
         .add_systems(Update, check_for_collisions)
@@ -304,29 +306,6 @@ fn apply_gravity(
     for mut velocity in &mut query {
         velocity.y += GRAVITY * time.delta_secs();
         velocity.y = velocity.y.max(MAX_FALL_SPEED);
-    }
-}
-
-fn player_jump(
-    dead: Res<Dead>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    asset_server: Res<AssetServer>,
-    mut commands: Commands,
-    mut query: Query<&mut Velocity, With<Player>>,
-) {
-    if keyboard.just_pressed(KeyCode::Space) && !dead.0 {
-        for mut velocity in &mut query {
-            velocity.y = JUMP_STRENGTH;
-        }
-        let audio = asset_server.load("sfx_wing.ogg");
-        commands.spawn((AudioPlayer::new(audio), PlaybackSettings::ONCE));
-    }
-}
-
-fn player_rotation(query: Query<(&Velocity, &mut Transform), With<Player>>) {
-    for (velocity, mut transform) in query {
-        let angle = (velocity.y / 600.0).clamp(-1.0, 1.0);
-        transform.rotation = Quat::from_rotation_z(angle * 1.5);
     }
 }
 
