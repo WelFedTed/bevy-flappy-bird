@@ -5,8 +5,8 @@ use bevy::sprite::Anchor;
 use bevy::window::{WindowPlugin, WindowResolution};
 use std::collections::HashMap;
 
-mod player;
-use player::PlayerPlugin;
+pub mod player;
+use crate::player::PlayerPlugin;
 
 const SCREEN_WIDTH: f32 = 288.0;
 const SCREEN_HEIGHT: f32 = 512.0;
