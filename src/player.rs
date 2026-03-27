@@ -1,8 +1,9 @@
+use bevy::prelude::*;
+
 use crate::Dead;
 use crate::JUMP_STRENGTH;
 use crate::Player;
 use crate::Velocity;
-use bevy::prelude::*;
 
 pub struct PlayerPlugin;
 

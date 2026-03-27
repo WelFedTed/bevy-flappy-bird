@@ -47,6 +47,9 @@ struct GravityOn(bool);
 struct Score(u32);
 
 #[derive(Component)]
+struct ScoreText;
+
+#[derive(Component)]
 struct Animation {
     frames: Vec<usize>,
     timer: Timer,
@@ -75,9 +78,6 @@ struct PipeBottom;
 
 #[derive(Component)]
 struct Passed;
-
-#[derive(Component)]
-struct ScoreText;
 
 #[derive(Component)]
 struct Obstacle;
@@ -120,7 +120,6 @@ fn main() {
         )
         .insert_resource(Dead(false))
         .insert_resource(GravityOn(true))
-        .insert_resource(Score(0)) // start with score = 0
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))
         .add_systems(Startup, spawn_player.after(load_atlas))
@@ -137,7 +136,6 @@ fn main() {
         .add_systems(Update, update_screen_flash)
         .add_systems(Update, mark_passed_pipes)
         .add_systems(Update, check_ground_collision)
-        .add_systems(Update, update_score_text)
         .run();
 }
 
@@ -228,18 +226,6 @@ fn setup(
         },
         ScoreText,
     ));
-}
-
-fn update_score_text(score: Res<Score>, mut query: Query<&mut Text, With<ScoreText>>) {
-    if !score.is_changed() {
-        return;
-    }
-
-    let Ok(mut text) = query.single_mut() else {
-        return;
-    };
-
-    **text = format!("{}", score.0);
 }
 
 fn spawn_player(mut commands: Commands, atlas: Res<Atlas>) {
