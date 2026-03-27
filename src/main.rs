@@ -8,6 +8,9 @@ use std::collections::HashMap;
 pub mod player;
 use crate::player::PlayerPlugin;
 
+pub mod score;
+use crate::score::ScorePlugin;
+
 const SCREEN_WIDTH: f32 = 288.0;
 const SCREEN_HEIGHT: f32 = 512.0;
 const GRAVITY: f32 = -1000.0;
@@ -99,6 +102,7 @@ struct ScreenFlash {
 fn main() {
     App::new()
         .add_plugins(PlayerPlugin)
+        .add_plugins(ScorePlugin)
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
