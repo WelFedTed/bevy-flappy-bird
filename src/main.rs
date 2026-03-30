@@ -9,7 +9,9 @@ pub mod player;
 use crate::player::PlayerPlugin;
 
 pub mod score;
+use crate::score::Score;
 use crate::score::ScorePlugin;
+use crate::score::ScoreText;
 
 const SCREEN_WIDTH: f32 = 288.0;
 const SCREEN_HEIGHT: f32 = 512.0;
@@ -42,12 +44,6 @@ struct Dead(bool);
 
 #[derive(Resource)]
 struct GravityOn(bool);
-
-#[derive(Resource)]
-struct Score(u32);
-
-#[derive(Component)]
-struct ScoreText;
 
 #[derive(Component)]
 struct Animation {

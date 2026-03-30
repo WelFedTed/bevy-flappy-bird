@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
-use crate::Score;
-use crate::ScoreText;
+#[derive(Resource)]
+pub struct Score(pub u32);
+
+#[derive(Component)]
+pub struct ScoreText;
 
 pub struct ScorePlugin;
 
