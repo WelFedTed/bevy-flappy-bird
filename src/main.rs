@@ -9,6 +9,7 @@ pub mod player;
 use crate::player::PlayerPlugin;
 
 pub mod score;
+use crate::score::SCORE_HEIGHT;
 use crate::score::Score;
 use crate::score::ScorePlugin;
 use crate::score::ScoreText;
@@ -30,7 +31,6 @@ const DRAW_DEBUG: bool = false; // toggle to draw debug gizmos for collision det
 const INVINCIBLE: bool = false; // toggle player invincibility
 const DIE_SOUND_DELAY: f32 = 0.5; // delay before playing the die sound after collision
 const FLASH_DURATION: f32 = 0.075; // duration of the screen flash after collision
-const SCORE_HEIGHT: f32 = 20.0;
 
 #[derive(Resource)]
 struct Atlas {

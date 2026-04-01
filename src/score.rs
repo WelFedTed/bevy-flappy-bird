@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+pub const SCORE_HEIGHT: f32 = 20.0;
+
 #[derive(Resource)]
 pub struct Score(pub u32);
 
