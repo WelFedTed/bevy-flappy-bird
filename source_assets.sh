@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -u
 
 TEMP_DIR="./temp"
@@ -7,6 +8,7 @@ DEST_DIR="./assets"
 FORCE_DOWNLOAD=false
 CLEAN=false
 OVERWRITE_ALL=false
+SKIP_ALL=false
 
 SOURCES=(
   "https://archive.org/download/flappy-bird-v-1.2_202107/Flappy%20Bird%201.3.apk"
@@ -66,7 +68,8 @@ Usage: $0 [options]
 Options:
   --force-download   Re-download source archives even if valid cached copies exist
   --clean            Delete ./temp after successful extraction
-  --overwrite        Overwrite all extracted files without prompting
+  --overwrite        Overwrite all file extraction conflicts without prompting
+  --skip             Skip all file extraction conflicts without prompting
   --help             Show this help message
 EOF
 }
@@ -81,6 +84,9 @@ for arg in "$@"; do
       ;;
     --overwrite)
       OVERWRITE_ALL=true
+      ;;
+    --skip)
+      SKIP_ALL=true
       ;;
     --help|-h)
       usage
@@ -158,23 +164,38 @@ download_file() {
 confirm_overwrite() {
   local dest_path="$1"
 
-  if [[ -f "$dest_path" && "$OVERWRITE_ALL" = false ]]; then
-    read -r -p "$dest_path exists. Overwrite? ([Y] Yes / [A] Yes to All / [N] No): " choice
-    case "$choice" in
-      y|Y)
-        return 0
-        ;;
-      a|A)
-        OVERWRITE_ALL=true
-        return 0
-        ;;
-      *)
-        return 1
-        ;;
-    esac
+  if [[ ! -f "$dest_path" ]]; then
+    return 0
   fi
 
-  return 0
+  if [[ "$OVERWRITE_ALL" = true ]]; then
+    return 0
+  fi
+
+  if [[ "$SKIP_ALL" = true ]]; then
+    return 1
+  fi
+
+  read -r -p "$dest_path exists. Overwrite? ([Y] Yes / [A] Yes to All / [N] No / [X] No to All): " choice
+  case "$choice" in
+    y|Y)
+      return 0
+      ;;
+    a|A)
+      OVERWRITE_ALL=true
+      return 0
+      ;;
+    n|N)
+      return 1
+      ;;
+    x|X)
+      SKIP_ALL=true
+      return 1
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 extract_file() {
