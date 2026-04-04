@@ -6,7 +6,10 @@ use bevy::window::{WindowPlugin, WindowResolution};
 use std::collections::HashMap;
 
 pub mod player;
+use crate::player::Dead;
+use crate::player::Player;
 use crate::player::PlayerPlugin;
+use crate::player::Velocity;
 
 pub mod score;
 use crate::score::SCORE_HEIGHT;
@@ -17,7 +20,6 @@ use crate::score::ScoreText;
 const SCREEN_WIDTH: f32 = 288.0;
 const SCREEN_HEIGHT: f32 = 512.0;
 const GRAVITY: f32 = -1000.0;
-const JUMP_STRENGTH: f32 = 350.0;
 const MAX_FALL_SPEED: f32 = -400.0;
 const SCROLL_SPEED: f32 = 100.0;
 const PIPE_GAP: f32 = 55.0; // distance between pipes vertically for bird to pass through
@@ -40,9 +42,6 @@ struct Atlas {
 }
 
 #[derive(Resource)]
-struct Dead(bool);
-
-#[derive(Resource)]
 struct GravityOn(bool);
 
 #[derive(Component)]
@@ -54,14 +53,6 @@ struct Animation {
 
 #[derive(Component)]
 struct Ground;
-
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct Velocity {
-    y: f32,
-}
 
 #[derive(Component)]
 struct Pipe;
@@ -114,7 +105,6 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
-        .insert_resource(Dead(false))
         .insert_resource(GravityOn(true))
         .add_systems(Startup, load_atlas)
         .add_systems(Startup, setup.after(load_atlas))

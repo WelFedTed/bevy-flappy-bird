@@ -1,14 +1,23 @@
 use bevy::prelude::*;
 
-use crate::Dead;
-use crate::JUMP_STRENGTH;
-use crate::Player;
-use crate::Velocity;
+const JUMP_STRENGTH: f32 = 350.0;
+
+#[derive(Resource)]
+pub struct Dead(pub bool);
+
+#[derive(Component)]
+pub struct Player;
+
+#[derive(Component)]
+pub struct Velocity {
+    pub y: f32,
+}
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(Dead(false));
         app.add_systems(Update, player_jump);
         app.add_systems(Update, player_rotation);
     }
